@@ -1,5 +1,7 @@
 # Assina AI
 
+[![tests](https://github.com/lksuey/assina-ai/actions/workflows/tests.yml/badge.svg)](https://github.com/lksuey/assina-ai/actions/workflows/tests.yml)
+
 A web dashboard that follows loan proposals through a digital signature and payment pipeline, with a focus on the ones that stall: proposals that were requested but never got signed, got stuck in a review stage, or were cancelled. It also has a management view with per-channel totals and a monthly efficiency target panel.
 
 The front end and the back end both run on Google Apps Script. The data lives in a Google Sheet that is refreshed by a small Python sync script.
