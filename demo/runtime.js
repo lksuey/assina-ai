@@ -1,5 +1,4 @@
 'use strict';
-/** Loads the real Code.gs into the Apps Script mock and fills it with demo data. */
 const fs = require('fs');
 const path = require('path');
 const { createRuntime } = require('./gas_mock');
@@ -7,7 +6,6 @@ const { createRuntime } = require('./gas_mock');
 const ROOT = path.resolve(__dirname, '..');
 const DEMO_LOGINS = ['admin.demo', 'Master', 'supervisor.demo', 'operator.demo'];
 
-/** Demo-only convention: the password of each account is "demo-" + login in lowercase. */
 const demoPassword = (login) => 'demo-' + login.toLowerCase();
 
 function loadDashboard(options = {}) {

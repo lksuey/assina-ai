@@ -12,16 +12,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
 <style>
-  /* ---------- Reestrutura visual pós-login (2026) ----------
-     Sistema de dashboard "executivo" pedido explicitamente: superfícies
-     lisas (sem glassmorphism/blur), tipografia única (Inter), bordas quase
-     invisíveis, raio de card contido, accent usado com escassez. A paleta
-     de marca do Assina AI (--olive/--lime/--cream/--danger/--positivo)
-     continua exatamente a mesma : só os neutros (fundo/superfície/texto/
-     borda) e os componentes estruturais (.glass, .iconbtn, .seg, tabelas,
-     badges, cards via rounded-2xl) mudam. Classes funcionais (.skel,
-     .dot, .bloco-protegido, autocomplete, modal, loader) continuam intactas
-     : só o visual de superfície delas (raio/sombra) foi contido. */
   :root {
     --bg: #F6F7F8;
     --surface: #FFFFFF;
@@ -32,26 +22,16 @@
     --text: #16181D;
     --text-mute: #667085;
     --text-fraco: #98A2B3;
-    /* OPACO, não transparente : thead aqui é position:sticky (tabelas
-       longas de Não Assinados/Cancelados); com fundo transparente as linhas
-       passam por baixo do cabeçalho fixo ao rolar. */
     --thead-bg: var(--surface);
     --row-border: rgba(16,24,40,.07);
     --skel-a: rgba(16,24,40,.05);
     --skel-b: rgba(16,24,40,.11);
     --lime: #B5F44A;
     --cream: #F3D8C7;
-    /* Tom de verde único do modo claro : ícones, funil, gráficos, deltas
-       positivos. --olive/--lime originais da paleta ficavam apagados ou
-       ácidos demais em cima do fundo claro; #46923C foi pedido explicitamente
-       pra resolver isso. Modo escuro mantém os tons originais (já liam bem
-       lá : ver bloco html.dark abaixo). */
     --olive: #46923C;
     --danger: #E4483C;
     --positivo: #46923C;
   }
-  /* Paleta escura afastada de preto neutro : segue os tons teal/verde da
-     marca, em vez de cinza-quase-preto. */
   html.dark {
     --bg: #0C1715;
     --surface: #132523;
@@ -78,21 +58,13 @@
     -webkit-font-smoothing: antialiased;
     transition: background-color .3s ease, color .25s ease;
   }
-  /* Densidade equivalente ao zoom de 90%, sem alterar o navegador.
-     No mobile preservamos os tamanhos e alvos de toque originais. */
   @media (min-width: 861px) { html { zoom: .9; } }
   .font-mono { font-variant-numeric: tabular-nums; }
 
-  /* Aurora/orbs decorativos removidos do shell pós-login (pedido explícito
-     do sistema de design: nada de glassmorphism/blobs no dashboard). */
   .aurora { display: none; }
 
   .glass { background: var(--surface); border: 1px solid var(--panel-border); transition: background-color .2s ease, border-color .2s ease; }
 
-  /* Raio de card contido (8-12px) em cima de QUALQUER elemento que já usa as
-     utilities do Tailwind no HTML (rounded-2xl/xl/3xl aparecem em dezenas de
-     cards espalhados pelo arquivo) : evita precisar editar cada ocorrência
-     uma por uma pra aplicar o novo sistema de design. */
   .rounded-2xl, .rounded-xl, .rounded-3xl { border-radius: 10px !important; }
 
   .brand-title { color: var(--text); font-family: 'Outfit', sans-serif; font-weight: 600; letter-spacing: -.045em; }
@@ -128,8 +100,6 @@
   @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(181,244,74,.55);} 70% { box-shadow: 0 0 0 9px rgba(181,244,74,0);} 100% { box-shadow: 0 0 0 0 rgba(181,244,74,0);} }
   @keyframes pulseRed { 0% { box-shadow: 0 0 0 0 rgba(228,72,60,.55);} 70% { box-shadow: 0 0 0 9px rgba(228,72,60,0);} 100% { box-shadow: 0 0 0 0 rgba(228,72,60,0);} }
 
-  /* "Atualizar agora" — relê o que já estiver sincronizado, de qualquer
-     máquina, sem disparar scraper nenhum (só pula o cache de 10min). */
   .btn-atualizar-agora {
     display: inline-flex; align-items: center; gap: 5px; margin-left: 6px;
     font-size: 11px; font-weight: 600; color: var(--text-mute);
@@ -150,8 +120,6 @@
   .lift { transition: border-color .15s ease, background-color .15s ease; }
   .lift:hover { border-color: var(--panel-border-strong); }
 
-  /* Label Slide Button (Originkit) adaptado aos botões existentes: mantém
-     cores, ícones e medidas do Assina AI; anima apenas rótulo e ícone. */
   .label-slide-btn { position: relative; overflow: hidden; isolation: isolate; will-change: transform; }
   .label-slide-copy {
     position: relative; display: inline-block; overflow: hidden;
@@ -177,18 +145,11 @@
   .label-slide-btn:not(:disabled):is(:hover,:focus-visible) .label-slide-icon--out { transform: translate(16px,-16px); opacity: 0; }
   .label-slide-btn:not(:disabled):is(:hover,:focus-visible) .label-slide-icon--in { transform: translate(0,0); opacity: 1; }
 
-  /* Resposta visual de clique em TODO botão do site (nenhum tinha antes :
-     ficava sem feedback nenhum entre o clique e o resultado aparecer). Regra
-     genérica em `button`/`.iconbtn`/`.seg button` cobre os casos sem `.lift`;
-     `.lift:active` vem DEPOIS de `.lift:hover` de propósito, pra vencer o
-     empate de especificidade quando o clique acontece em cima do hover. */
   button, .iconbtn, .seg button { transition-property: transform, background, color, border-color, box-shadow; transition-duration: .15s; transition-timing-function: ease; }
   button:active, .iconbtn:active, .seg button:active { transform: scale(.94); }
   .lift:active { transform: translateY(-1px) scale(.96); box-shadow: 0 8px 18px -10px rgba(0,0,0,.4); transition-duration: .08s; }
   .label-slide-btn:not(:disabled):active { transform: scale(.97); }
 
-  /* Abertura bipartida entre páginas. Duas lâminas cobrem a troca, o destino
-     é montado fora de vista e a composição reabre pelo eixo central. */
   :root {
     --page-blade-bg:#F2F4F3;
     --page-blade-line:rgba(73,132,66,.38);
@@ -247,8 +208,6 @@
   .page-transition-enter { animation: pageSettle .28s cubic-bezier(.16,1,.3,1) both; }
   @keyframes pageSettle { from { opacity: .68; } to { opacity: 1; } }
 
-  /* Passagem cromática do tema. A nova paleta atravessa a tela a partir do
-     controle acionado, cobre a troca dos tokens e segue até o lado oposto. */
   .theme-transition-exposure {
     position: fixed; inset: 0; z-index: 76; pointer-events: none;
     visibility: hidden; overflow: hidden; contain: strict;
@@ -347,14 +306,11 @@
   .reveal { opacity: 0; transform: translateY(20px); transition: opacity .6s cubic-bezier(.22,1,.36,1), transform .6s cubic-bezier(.22,1,.36,1); }
   .reveal.is-visible { opacity: 1; transform: none; }
 
-  /* ---------- Login 40/60, identidade própria Assina AI ---------- */
   #loginOverlay {
     position: fixed; inset: 0; z-index: 100; display: grid;
     grid-template-columns: minmax(360px, 40%) minmax(0, 60%);
     padding: 0; background: #07110f; overflow: hidden;
   }
-  /* Sem isto o seletor de ID acima (especificidade 100) vence o .hidden do
-     Tailwind (10) e a camada de login nunca some depois de autenticar. */
   #loginOverlay.hidden { display: none; }
   .login-access {
     position: relative; z-index: 3; min-width: 0; display: flex; align-items: center;
@@ -464,13 +420,8 @@
   .field { width: 100%; border-radius: 10px; padding: 10px 12px; font-size: 13px; background: var(--panel-bg); border: 1px solid var(--panel-border); color: var(--text); transition: border-color .2s, box-shadow .2s; }
   .field:focus { outline: none; border-color: var(--lime); box-shadow: 0 0 0 3px rgba(181,244,74,.18); }
 
-  /* Troca de tema: desliga toda transição por um instante : com tantos
-     painéis .glass (backdrop-filter: blur) na tela, animar background/border
-     de todos ao mesmo tempo é o que causava o lag perceptível; trocar
-     instantaneamente resolve sem precisar tirar o blur. */
   html.tema-trocando *:not(.theme-transition-exposure) { transition: none !important; }
 
-  /* ---------- Calendário custom (nada de date picker nativo) ---------- */
   #calendarioPopover { width: 264px; }
   #calendarioPopover .glass { background: var(--thead-bg); border: 1px solid var(--panel-border-strong); box-shadow: 0 16px 34px rgba(0,0,0,.28); animation: autoIn .18s cubic-bezier(.22,1,.36,1); }
   #calendarioPopover.saindo .glass { animation: autoOut .15s cubic-bezier(.4,0,1,1) forwards; }
@@ -481,25 +432,15 @@
   .cal-dia.selecionado { background: var(--lime); color: #0d1a06; font-weight: 700; }
   .cal-dia.fora { color: var(--text-mute); opacity: .35; cursor: default; }
 
-  /* Barras dos gráficos do Gerencial são clicáveis : .ger-hit é uma faixa
-     invisível de altura total por coluna (alvo de clique generoso, já que a
-     barra visível pode ser bem baixa quando o valor é pequeno). */
   .ger-hit { fill: transparent; cursor: pointer; }
   .ger-hit:hover { fill: rgba(147,183,190,.12); }
   #lineChart { cursor: crosshair; }
 
   .periodo-preset.active { background: var(--lime); color: #0d1a06; border-color: transparent; }
 
-  /* Ícones/links "de destaque" (funil, conversão, olho de desbloquear,
-     "selecionar todos") : usavam o lime puro do Tailwind (--tw lime-400/500,
-     não a --lime do projeto); trocado por --positivo pra acompanhar o tom
-     único do modo claro (#46923C) sem ficar ácido em cima do fundo claro. */
   .icone-destaque { color: var(--positivo); }
   .iconbtn-sair:hover { color: var(--danger); border-color: var(--danger); }
 
-  /* Spinner radial minimalista (12 traços esmaecendo) — mesmo padrão do
-     Monitoramento Disparos Leilão CTPS, replicado em 09/10/2026 pra
-     indicar carregamento na Visão Gerencial ao trocar dia/período/hora. */
   .spinner-radial { position: relative; width: 15px; height: 15px; flex-shrink: 0; }
   .spinner-radial i {
     position: absolute; top: 0; left: 6.5px; width: 2px; height: 5.5px;
@@ -520,18 +461,12 @@
   .spinner-radial i:nth-child(12) { transform: rotate(330deg); animation-delay: -0.083s; }
   @keyframes spinner-fade { 0% { opacity: 1; } 100% { opacity: .15; } }
 
-  /* Cabeçalho clicável de ordenação (Casos Parados / Cancelados) */
   thead th[data-key] { cursor: pointer; user-select: none; white-space: nowrap; }
   thead th[data-key]:hover { color: var(--text); }
   thead th[data-key] .ordenacao-seta { display: inline-block; margin-left: 3px; opacity: .35; font-size: 9px; }
   thead th[data-key].ordenado-asc .ordenacao-seta, thead th[data-key].ordenado-desc .ordenacao-seta { opacity: 1; color: var(--positivo); }
 
-  /* Pulso do ponto final do gráfico de Conversão diária : antes era SMIL
-     <animate> no atributo r, junto com transition CSS em cx/cy pra mover o
-     ponto; misturar os dois motores de animação no mesmo elemento deixava o
-     pulso com passos irregulares. transform:scale via CSS puro resolve. */
 
-  /* Particle Tether único para a carga inicial e a entrada gerencial. */
   html.loader-aberto, body.loader-aberto {
     overflow: hidden !important; overscroll-behavior: none; scrollbar-width: none;
   }
@@ -563,7 +498,6 @@
   :root { --brand-line: #54747A; }
   html.dark { --brand-line: #7FA3AB; }
 
-  /* ---------- Autocomplete (custom : nada de <select>/<datalist> nativos) ---------- */
   .autocomplete-lista {
     position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 30;
     max-height: 220px; overflow-y: auto; border-radius: 10px;
@@ -578,7 +512,6 @@
   .autocomplete-item:hover, .autocomplete-item.ativo { background: rgba(181,244,74,.14); }
   .autocomplete-vazio { padding: 8px 12px; font-size: 12px; color: var(--text-mute); font-style: italic; }
 
-  /* ---------- Exportação ---------- */
   .export-content { --export-accent: #31782B; max-width: 1320px; }
   html.dark .export-content { --export-accent: var(--lime); }
   .export-content .icone-destaque { color: var(--export-accent); }
@@ -660,7 +593,6 @@
     .export-action-row { align-items: stretch; }
   }
 
-  /* Cinco respostas interativas por superfície, sempre acionadas pelo usuário. */
   #loginForm > div { transition: transform .3s cubic-bezier(.16,1,.3,1); }
   #loginForm > div:focus-within { transform: translateX(3px); }
   #loginForm > div:focus-within .login-field-label { color: var(--login-accent); transform: translateX(2px); }
@@ -723,7 +655,6 @@
     }
   }
 
-  /* ---------- Modal de confirmação ---------- */
   @keyframes modalBackdropIn { from { opacity: 0; } to { opacity: 1; } }
   @keyframes modalCardIn { from { opacity: 0; transform: scale(.92) translateY(10px); } to { opacity: 1; transform: none; } }
   #confirmBackdrop { animation: modalBackdropIn .2s ease-out; }
@@ -731,7 +662,6 @@
   #unlockBackdrop { animation: modalBackdropIn .2s ease-out; }
   #unlockCard { animation: modalCardIn .28s cubic-bezier(.16,1,.3,1); }
 
-  /* ---------- Bloco protegido por blur (Não assinados / Cancelados) ---------- */
   .bloco-protegido { position: relative; }
   .bloco-conteudo { transition: filter .3s ease; }
   .bloco-protegido.bloqueado .bloco-conteudo { filter: blur(8px); pointer-events: none; user-select: none; }
@@ -752,7 +682,6 @@
     50% { box-shadow: 0 14px 30px rgba(0,0,0,.3), 0 0 0 12px rgba(181,244,74,0); }
   }
 
-  /* ---------- Chips de status viram botão de filtro ---------- */
   .chip-filtro { cursor: pointer; transition: background .2s ease, border-color .2s ease, transform .15s ease; }
   .chip-filtro:hover { transform: translateY(-1px); border-color: var(--panel-border-strong); }
   .chip-filtro.ativo { background: rgba(181,244,74,.18); border-color: var(--lime); }
@@ -775,7 +704,6 @@
     .label-slide-btn:not(:disabled):is(:hover,:focus-visible) .label-slide-icon--out { transform: none; opacity: 1; }
   }
 
-  /* ---------- Meta: mapa operacional da eficiência ---------- */
   @property --meta-orbit-turn { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
   @property --meta-orbit-arc { syntax: '<percentage>'; inherits: false; initial-value: 18%; }
   :root {
@@ -1020,7 +948,6 @@
     .meta-entering .meta-hero::after { animation: none !important; }
     .meta-orbit-btn { transition: none; }
   }
-  /* ---------- Brand logo (neutral placeholder, replace with your own) ---------- */
   .brand-logo { height: 33px; width: auto; aspect-ratio: 764 / 495; display: inline-block; flex-shrink: 0; background-size: contain; background-position: center; background-repeat: no-repeat; }
   .brand-logo-branco { display: none; }
   html.dark .brand-logo-cor { display: none; }
@@ -1049,7 +976,6 @@
     <div class="orb orb-3"></div>
   </div>
 
-  <!-- ================= LOGIN ================= -->
   <div id="loginOverlay">
     <section class="login-access" aria-label="Acesso ao Assina AI">
       <div class="login-access-inner">
@@ -1097,7 +1023,6 @@
     </section>
   </div>
 
-  <!-- ================= META (exclusivo do login Master) ================= -->
   <div id="metaView" class="meta-view hidden fixed inset-0 z-50 overflow-y-auto">
     <div class="assina-shell meta-content py-8">
       <div class="meta-masthead">
@@ -1230,7 +1155,6 @@
     </div>
   </div>
 
-  <!-- ================= EXPORTAR ================= -->
   <div id="exportView" class="hidden fixed inset-0 z-50 overflow-y-auto" style="background:var(--bg)">
     <div class="assina-shell export-content py-8">
       <div class="export-masthead mb-7">
@@ -1381,7 +1305,6 @@
     </div>
   </div>
 
-  <!-- ================= GERENCIAL (só Admin) ================= -->
   <div id="gerencialView" class="hidden fixed inset-0 z-50 overflow-y-auto" style="background:var(--bg)">
      <div class="assina-shell py-8">
       <div class="gerencial-masthead mb-6">
@@ -1430,7 +1353,6 @@
 
       <div id="gerencialComparativoLabel" class="text-[11px] mb-3" style="color:var(--text-mute)"></div>
 
-      <!-- Visão geral: tabela com os 5 canais + linha de Total -->
       <div id="gerencialTabelaWrap" class="hidden glass rounded-2xl p-5 sm:p-6 overflow-x-auto">
         <table id="gerencialTabela" class="w-full text-[12.5px] gerencial-tabela">
           <thead>
@@ -1449,7 +1371,6 @@
         </table>
       </div>
 
-      <!-- Canal individual: cards com as mesmas 6 métricas -->
       <div id="gerencialCardsWrap" class="hidden">
         <div id="gerencialIndisponivel" class="hidden mb-4 rounded-xl px-4 py-3 text-[12px] font-semibold" style="background:rgba(243,216,199,.18); color:#F3D8C7">
           Canal ainda não integrado. Aguardando o scraper deste produto. Valores zerados abaixo.
@@ -1457,9 +1378,6 @@
         <div id="gerencialCardsRow" class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3"></div>
       </div>
 
-      <!-- Ritmo de produção: 4 gráficos (Total de Propostas / Valor Total /
-           Qtde. Efetivados / Valor Pago), granularidade acompanha a visão
-           (hora/dia/mês) : os 5 canais têm dado real. -->
       <div id="gerencialGraficosWrap" class="hidden mt-6">
         <h2 id="gerGraficoTitulo" class="text-[13px] font-bold mb-3"></h2>
         <div id="gerGraficosGrid" class="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -1496,7 +1414,6 @@
     </div>
   </div>
 
-  <!-- ================= CALENDÁRIO (seleção de data : nada de date picker nativo) ================= -->
   <div id="calendarioPopover" class="hidden" style="position:fixed; z-index:75;">
     <div class="glass rounded-2xl p-3">
       <div class="flex items-center justify-between mb-2">
@@ -1511,7 +1428,6 @@
     </div>
   </div>
 
-  <!-- ================= CONFIRMAÇÃO (sem filtros) ================= -->
   <div id="confirmModal" class="hidden fixed inset-0 z-[70] flex items-center justify-center p-5">
     <div id="confirmBackdrop" class="absolute inset-0" style="background:rgba(0,0,0,.55)"></div>
     <div id="confirmCard" class="glass rounded-2xl p-6 max-w-[420px] w-full relative">
@@ -1531,7 +1447,6 @@
     </div>
   </div>
 
-  <!-- ================= DESBLOQUEAR BLOCO ================= -->
   <div id="unlockModal" class="hidden fixed inset-0 z-[70] flex items-center justify-center p-5">
     <div id="unlockBackdrop" class="absolute inset-0" style="background:rgba(0,0,0,.55)"></div>
     <div id="unlockCard" class="glass rounded-2xl p-6 max-w-[380px] w-full relative">
@@ -1566,7 +1481,6 @@
   </div>
   <div id="themeTransitionExposure" class="theme-transition-exposure" aria-hidden="true"></div>
 
-  <!-- ================= CARREGAMENTO COMPARTILHADO ================= -->
   <div id="loaderTela" class="hidden fixed inset-0 z-[80] flex items-center justify-center p-5" style="background:var(--bg); user-select:none; -webkit-user-select:none;" role="dialog" aria-modal="true" aria-labelledby="loaderStatus">
     <div class="loader-centro">
       <canvas id="loaderTetherCanvas" aria-hidden="true"></canvas>
@@ -1580,7 +1494,6 @@
     <p id="loaderLoginNote" class="loader-login-note hidden">Na primeira entrada, a preparação dos dados pode levar um pouco mais.</p>
   </div>
 
-  <!-- ================= APP ================= -->
   <div id="app" class="hidden">
     <header class="glass sticky top-0 z-40">
        <div class="assina-shell py-4 flex flex-wrap items-center justify-between gap-4">
@@ -1797,20 +1710,13 @@
   <div id="toast"></div>
 
 <script>
-  /* Guarda obrigatória: se o CDN do Lucide não carregar, chamar createIcons
-     direto lança e mata o resto do script : sem listeners, sem login, sem
-     erro visível. Mesmo padrão defensivo usado no Portal da Qualidade. */
   function renderIcons() {
     if (!window.lucide || !document.querySelector('i[data-lucide]')) return;
     window.lucide.createIcons();
   }
   renderIcons();
 
-  // Coordenadas de ponteiro são físicas; left/top CSS precisam compensar
-  // a densidade global e o zoom já existente no shell do dashboard.
   function escalaViewportElemento_(elemento) {
-    // currentCSSZoom retorna 1 enquanto o popover está com display:none.
-    // Percorrer os ancestrais também cobre o primeiro posicionamento.
     let escala = 1;
     for (let atual = elemento; atual; atual = atual.parentElement) {
       escala *= parseFloat(getComputedStyle(atual).zoom) || 1;
@@ -1818,8 +1724,6 @@
     return escala;
   }
 
-  /* A assinatura do palco agora é tipográfica. A entrada amplia o título e
-     sua saída confirma o login sem manter canvas, partículas ou RAF ativos. */
   const LoginStage_ = (() => {
     const stage = document.getElementById('loginStage');
     const nulo = { iniciar() {}, parar() {}, sair() { return Promise.resolve(); } };
@@ -1901,7 +1805,6 @@
   const fmtMoeda = (v) => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const fmtNum = (v) => (v || 0).toLocaleString('pt-BR');
 
-  /* ---------- Tema ---------- */
   let transicaoTemaAtiva_ = false;
   function aplicarTema(tema, origem) {
     const html = document.documentElement;
@@ -1959,7 +1862,6 @@
   document.getElementById('themeToggleGerencial').addEventListener('click', alternarTema_);
   document.getElementById('themeToggleMeta').addEventListener('click', alternarTema_);
 
-  /* ---------- Toast ---------- */
   function toast(msg) {
     const t = document.getElementById('toast');
     t.textContent = msg;
@@ -1967,7 +1869,6 @@
     setTimeout(() => t.classList.remove('show'), 3200);
   }
 
-  /* ---------- Device token + sessão ---------- */
   function getDeviceToken() {
     let t;
     try { t = localStorage.getItem('assina_ai_device'); } catch (e) {}
@@ -1995,14 +1896,10 @@
       document.getElementById('loginInput').focus();
     }, 'login');
   }
-  /* Carregamento da primeira carga e da entrada gerencial. */
   let watchdog = null;
   let loaderRetryFn = () => carregar();
   let loaderCancelarFn = null;
 
-  // Pedido explícito: só avisar erro depois de 1 minuto sem resposta : dá
-  // folga de sobra pro pior caso real (cache expirado + base grande, ~16-18s)
-  // sem soar alarme falso.
   function armarWatchdog_(ms) {
     clearTimeout(watchdog);
     watchdog = setTimeout(() => {
@@ -2021,9 +1918,6 @@
     document.getElementById('loaderErro').classList.remove('hidden');
   }
 
-  // Particle Tether compartilhado pelas telas cheias de carregamento.
-  // Port fiel do componente Originkit anexado para Canvas 2D puro, sem
-  // React/dependências, com arraste por mouse/toque e inércia amortecida.
   const ParticleTether_ = (() => {
     const canvas = document.getElementById('loaderTetherCanvas');
     const ctx = canvas.getContext('2d');
@@ -2293,8 +2187,6 @@
     card.classList.add('shake');
   }
 
-  // Qualquer erro de JS não tratado vira mensagem na tela de login, em vez de
-  // deixar a página muda (o sintoma mais difícil de diagnosticar).
   window.addEventListener('error', (e) => {
     if (!document.getElementById('loginOverlay').classList.contains('hidden')) {
       mostrarErroLogin('Erro na página: ' + (e.message || 'desconhecido'));
@@ -2365,7 +2257,6 @@
     return false;
   }
 
-  /* ---------- Count-up (só anima quando o valor muda de verdade) ---------- */
   function countUp(el, chave, target, opts) {
     opts = opts || {};
     const from = state.kpiValores[chave] !== undefined ? state.kpiValores[chave] : 0;
@@ -2383,11 +2274,6 @@
   }
 
   function kpiCard(label, id, sub, alert, comValor) {
-    // comValor : mostra o valor em R$ correspondente numa linha própria,
-    // em fonte leve (thin), abaixo do número principal — pedido explícito
-    // pros cards Total de Propostas e Convertido (Pagos). Ficou melhor
-    // assim do que inline ao lado do número (apertado/desalinhado na
-    // escala do card).
     const valorHtml = comValor
       ? `<div id="${id}Valor" class="font-mono text-[13px] font-light mt-0.5" style="color:var(--text-mute); letter-spacing:.01em;"></div>`
       : '';
@@ -2400,10 +2286,6 @@
       </div>
     </div>`;
   }
-  // "Convertido (Pagos)"/"Projeção do dia" agora somam os dias do período
-  // selecionado no topo (Code.gs computeProjecao_), não só hoje : o rótulo
-  // do card de Projeção precisa acompanhar isso pra não ficar dizendo "do
-  // dia" quando na verdade é "01/09 a 15/09", por exemplo.
   function atualizarRotulosPagoProjecao_() {
     const hojeIso = dataParaIso_(new Date());
     const ehSoHoje = state.periodo.de === hojeIso && state.periodo.ate === hojeIso;
@@ -2413,10 +2295,6 @@
 
   function renderKpis(data) {
     const contagem = data.funil[state.setor].contagem, valores = data.funil[state.setor].valores;
-    // Total de Propostas / Valor Total contam TODAS as linhas e todos os
-    // status (inclusive Pago) : é a base bruta inteira, sem recorte de
-    // estágio. "Valor Pago" é o KPI separado que soma só quem está
-    // confirmado na base de Pagos (ver proj.pagoHoje).
     const totalPropostas = Object.values(contagem).reduce((soma, qtd) => soma + qtd, 0);
     const valorTotal = Object.values(valores).reduce((soma, valor) => soma + valor, 0);
     const proj = data.projecao[state.setor];
@@ -2448,13 +2326,10 @@
     document.getElementById('taxaLabel').classList.toggle('hidden', !proj.alerta);
   }
 
-  /* ---------- Funil (atualiza no lugar quando os estágios não mudam) ---------- */
   const ORDEM_FUNIL = ['NÃO REDIGITOU','PAROU NA BIO','CONF DE FRAUDE','CONFERÊNCIA','ASSINADO','CONFERIDO',
     'LIBERADO','PENDENTE','PENDENTE ANTIFRAUDE','PENDENTE REGULARIZAÇÃO','PROCESSANDO PAGAMENTO AUTOMÁTICO',
     'RECOMPRA','REENVIANDO','RELIBERADO','BANCO','PAGO','CANCELADO'];
 
-  // Oculto do funil por pedido : não apagado do cálculo, só da exibição
-  // (se um dia quiserem de volta, é só tirar daqui).
   const FUNIL_ESTAGIOS_OCULTOS = ['PAGO'];
 
   function renderFunil(funil) {
@@ -2491,18 +2366,8 @@
     row.querySelector('.funil-count').textContent = fmtNum(qtd);
   }
 
-  /* ---------- Gráfico de linha (drawline só na primeira carga) ----------
-     Refatorado: grade horizontal com rótulo de valor, datas no eixo X,
-     área preenchida sob a linha de Pago, um pontinho em cada dia (não só
-     no último) e uma legenda de insight (pico + hoje). A linha/pathPago e
-     o dot do último ponto continuam com a mesma transição suave de antes;
-     o resto (grade/eixo/pontinhos/área) é redesenhado a cada render : é
-     barato e não precisa da mesma lógica de "só anima na primeira carga". */
   const MESES_ABREV_PT = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
   function formatarDataEixo_(iso) {
-    // Blindagem: se algum dia "iso" vier fora do formato aaaa-MM-dd (ex.:
-    // Date de verdade que escapou da normalização do servidor), nunca deixa
-    // o toString() inteiro do Date vazar pro rótulo : cai num ":" curto.
     const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
     if (!m) return 'N/D';
     if (state.linhaVisao === 'mensal') return MESES_ABREV_PT[Number(m[2]) - 1] + '/' + m[1].slice(2);
@@ -2510,11 +2375,6 @@
   }
   function renderLinha(serie, alerta) {
     const svg = document.getElementById('lineChart');
-    // Com 1 ponto só o path não tem comprimento nenhum (só um "moveto"),
-    // então a linha nem aparece : sobra a bolinha flutuando sozinha, o que
-    // parece bug. Com <2 pontos não dá pra desenhar uma linha de verdade
-    // mesmo, então mostra o mesmo aviso de "sem histórico" até a série
-    // crescer.
     if (serie.length < 2) {
       svg.innerHTML = '<text x="300" y="120" fill="#93B7BE" font-size="12" text-anchor="middle">Sem histórico suficiente ainda. A série cresce a cada dia sincronizado.</text>';
       document.getElementById('linhaInsight').textContent = '';
@@ -2529,10 +2389,6 @@
     const pontosPago = serie.map((d, i) => [x(i), y(d.pago)]);
     const pontosProj = serie.map((d, i) => [x(i), y(d.projecao || 0)]);
     const pathFrom = (pts) => 'M ' + pts.map(p => p.join(',')).join(' L ');
-    // var(--positivo) direto (não resolvido pra hex) : atributo de SVG
-    // aceita CSS var() nativamente e acompanha a troca de tema sozinho.
-    // Resolver pra hex fixo aqui deixava a cor "grudada" no tema de quando
-    // o gráfico foi desenhado por último, só atualizando no próximo refresh.
     const cor = alerta ? 'var(--danger)' : 'var(--positivo)';
     const ns = 'http://www.w3.org/2000/svg';
 
@@ -2559,11 +2415,6 @@
 
       const linha = document.createElementNS(ns, 'path');
       linha.setAttribute('id', 'pathPago'); linha.setAttribute('fill', 'none'); linha.setAttribute('stroke', cor);
-      // vector-effect:non-scaling-stroke foi tentado aqui pra manter a
-      // espessura fixa em px de tela, mas criava uma folga visível entre o
-      // fim da linha e o dot (bug de cap com escala não-uniforme) : tirado.
-      // Em vez disso, deixa a espessura fina o bastante (2 unidades de
-      // viewBox) pra nunca passar de ~4px de tela mesmo esticado.
       linha.setAttribute('stroke-width', '2'); linha.setAttribute('stroke-linecap', 'round');
       linha.setAttribute('d', pathFrom(pontosPago));
       svg.appendChild(linha);
@@ -2578,8 +2429,6 @@
       dotsGroup.setAttribute('id', 'dotsChart');
       svg.appendChild(dotsGroup);
 
-      // Alvo de hover : círculo bem maior e invisível por cima de cada dia,
-      // mais fácil de acertar o cursor do que a bolinha visual de 2.5px.
       const hitGroup = document.createElementNS(ns, 'g');
       hitGroup.setAttribute('id', 'hitChart');
       svg.appendChild(hitGroup);
@@ -2603,12 +2452,9 @@
       if (dot) { const last = pontosPago[pontosPago.length - 1]; dot.setAttribute('cx', last[0]); dot.setAttribute('cy', last[1]); dot.setAttribute('fill', cor); }
     }
 
-    // Área preenchida sob a linha de Pago : path próprio, fecha na base.
     const area = svg.querySelector('#areaPago');
     if (area) area.setAttribute('d', pathFrom(pontosPago) + ` L ${x(serie.length - 1)},${H - padB} L ${x(0)},${H - padB} Z`);
 
-    // Pontinho em cada dia da linha de Pago (o último fica maior/com glow,
-    // já é o #dotPago separado) : dá pra ver cada dia sem precisar de hover.
     const dotsGroup = svg.querySelector('#dotsChart');
     if (dotsGroup) {
       dotsGroup.innerHTML = pontosPago.slice(0, -1).map(p =>
@@ -2616,8 +2462,6 @@
       ).join('');
     }
 
-    // Alvos invisíveis de hover, um por dia : guardam data/qtd/valor como
-    // data-attribute pro popup ler no mousemove (delegação, ver abaixo).
     const hitGroup = svg.querySelector('#hitChart');
     if (hitGroup) {
       hitGroup.innerHTML = pontosPago.map((p, i) => {
@@ -2627,8 +2471,6 @@
       }).join('');
     }
 
-    // Grade horizontal (3 linhas de referência + rótulo de valor) e datas
-    // no eixo X : thinned quando tem muito dia, senão os rótulos colidem.
     const chrome = svg.querySelector('#chromeChart');
     if (chrome) {
       const nDivisoes = 3;
@@ -2639,9 +2481,6 @@
         grade += `<line x1="${padL}" y1="${yy.toFixed(1)}" x2="${W - padR}" y2="${yy.toFixed(1)}" stroke="var(--panel-border)" stroke-width="1"/>`;
         grade += `<text x="${(padL - 6).toFixed(1)}" y="${(yy + 3).toFixed(1)}" text-anchor="end" font-size="9" fill="var(--text-mute)">${fmtNum(Math.round(valor))}</text>`;
       }
-      // A densidade depende da largura realmente disponível, não só da
-      // quantidade de pontos. Em telas estreitas, preservar início e fim
-      // sem espremer datas intermediárias evita a colisão mostrada no mobile.
       const n = serie.length;
       const larguraPx = svg.getBoundingClientRect().width || 600;
       const maxRotulos = Math.min(n, 7, Math.max(2, Math.floor(larguraPx / 72)));
@@ -2654,7 +2493,6 @@
       chrome.innerHTML = grade;
     }
 
-    // Insight: pico da série + valor de hoje (último ponto), ao lado da legenda.
     const insightEl = document.getElementById('linhaInsight');
     if (insightEl) {
       const pico = serie.reduce((m, d) => d.pago > m.pago ? d : m, serie[0]);
@@ -2664,16 +2502,10 @@
     }
   }
 
-  // Mantém o conteúdo e o visual próprios do Assina AI, mas usa a mesma
-  // ativação dos gráficos do Monitoramento do Leilão: qualquer posição
-  // horizontal do gráfico escolhe o ponto mais próximo e o balão acompanha
-  // o cursor, sem exigir que o usuário acerte o círculo do dado.
   (function ligarTooltipLinha_() {
     const svg = document.getElementById('lineChart');
     const tooltip = document.getElementById('linhaTooltip');
     if (!svg || !tooltip) return;
-    // Fora do card, como no Monitoramento: position:fixed fica relativo à
-    // viewport mesmo enquanto o card termina sua animação de entrada.
     document.body.appendChild(tooltip);
     svg.addEventListener('mousemove', (e) => {
       const pontos = Array.from(svg.querySelectorAll('.linha-hit'));
@@ -2688,10 +2520,6 @@
       document.getElementById('linhaTooltipData').textContent = formatarDataEixo_(alvo.dataset.data);
       document.getElementById('linhaTooltipQtd').textContent = fmtNum(Number(alvo.dataset.pago)) + (state.linhaVisao === 'mensal' ? ' convertidas no mês' : ' convertidas no dia');
       document.getElementById('linhaTooltipValor').textContent = fmtMoeda(Number(alvo.dataset.valor));
-      // Projeção = total de propostas daquele dia × taxa média de conversão
-      // dos dias anteriores (mesma conta do card "Projeção do dia") : sem
-      // isso a linha tracejada aparecia no gráfico sem nenhuma explicação
-      // do que ela representa.
       document.getElementById('linhaTooltipProj').textContent = 'Projeção: ' + fmtNum(Number(alvo.dataset.projecao)) + ' (de ' + fmtNum(Number(alvo.dataset.total)) + ' propostas no dia)';
       tooltip.classList.remove('hidden');
       const escala = escalaViewportElemento_(tooltip);
@@ -2703,7 +2531,6 @@
     svg.addEventListener('mouseleave', () => tooltip.classList.add('hidden'));
   })();
 
-  /* ---------- Chips de resumo (pivô) : clicáveis, viram filtro da tabela ---------- */
   state.chipAtivoNA = null;
   state.chipAtivoCanc = null;
 
@@ -2721,7 +2548,6 @@
     });
   }
 
-  /* ---------- Tabelas : busca sobre o array completo, não sobre o DOM ---------- */
   const CAP_TABELA = 500;
   function renderTabela(tbodyId, contadorId, linhasTotais, campos, animar) {
     const tabela = document.getElementById(tbodyId);
@@ -2751,8 +2577,6 @@
       { key: 'tentativasRetorno' }, { key: 'tentativasBemSucedidas' }
     ];
   }
-  // Tabulações (Retorno Tentativa 1º/2º) : vêm da planilha externa própria
-  // da operação, cruzadas por Nº Proposta. Ficam no fim das duas tabelas.
   function campoTabulacao_() {
     return [{ key: 'tabulacaoTentativa1' }, { key: 'tabulacaoTentativa2' }];
   }
@@ -2763,9 +2587,6 @@
       { key: 'valor', money: true }, { key: 'supervisor' }, ...campoRetorno_(), ...campoTabulacao_()];
   }
   function camposCanc() {
-    // motivo vem em branco quando não há motivo cadastrado (a exportação
-    // precisa disso) : na tela mostra "CANCELADO" genérico só como rótulo
-    // visual, não muda o dado exportado.
     return [{ key: 'dataProposta' },
       { key: 'motivo', badge: true, warn: () => true, texto: (l) => l.motivo || 'CANCELADO' },
       { key: 'proposta' }, { key: 'cliente' }, { key: 'celular' }, { key: 'analista' }, { key: 'correspondente' },
@@ -2777,9 +2598,6 @@
     if (termo) resultado = resultado.filter(l => Object.values(l).join(' ').toLowerCase().includes(termo));
     return resultado;
   }
-  // Ordenação clicando no cabeçalho : 1º clique numa coluna nova ordena
-  // crescente, clicar de novo na mesma inverte. Numérico/booleano ordena
-  // por valor; texto usa localeCompare pt-BR (acentos/maiúsculas corretos).
   function ordenarLinhas_(linhas, ordenacao) {
     if (!ordenacao.chave) return linhas;
     const chave = ordenacao.chave, dir = ordenacao.dir;
@@ -2845,9 +2663,6 @@
     if (!iso) { dot.classList.add('stale'); txt.textContent = 'ainda sem sincronização registrada'; return; }
     const d = new Date(iso);
     const diffMin = (Date.now() - d.getTime()) / 60000;
-    // Sync agora é fixo em XX:05 de cada hora : 45min de folga cobre o
-    // intervalo inteiro até a próxima rodada sem acender vermelho à toa
-    // (ex.: sincronizado 09:05, só fica vermelho às 09:50).
     dot.classList.toggle('stale', diffMin > 45);
     txt.textContent = 'Última atualização foi às ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   }
@@ -2859,9 +2674,6 @@
     else runner.getDashboardData(state.token, state.periodo.de, state.periodo.ate, forcar);
   }
 
-  // Botão "Atualizar agora" — pula o cache de 10min do servidor (Code.gs),
-  // não dispara nenhum scraper; só força reler o que já estiver
-  // sincronizado nos Sheets até agora. Funciona de qualquer máquina.
   function atualizarAgora_() {
     const btn = document.getElementById('btnAtualizarAgora');
     if (!btn || btn.disabled) return;
@@ -2889,8 +2701,6 @@
       const proj = state.data ? state.data.projecao[state.setor] : { alerta: false };
       if (!document.getElementById('app').classList.contains('hidden')) renderLinha(serieAtualLinha_(), proj.alerta);
     }).catch(() => {
-      // O histórico é complementar. Ontem e hoje permanecem íntegros e uma
-      // atualização posterior tentará novamente sem reabrir o loader.
     });
   }
   function iniciarPreloadsDuranteLoader_() {
@@ -2898,8 +2708,6 @@
     const tarefas = [chamarServidor_('prepararExportacoesRapidas', tokenDoLogin)];
     if (state.papel === 'Admin') tarefas.push(precarregarGerencial_());
     if (state.podeAcessarMeta) tarefas.push(precarregarMeta_());
-    // Nenhuma destas Promises bloqueia a semana atual ou a retirada do
-    // loader. As falhas ficam isoladas e cada tela mantém seu retry normal.
     return Promise.allSettled(tarefas);
   }
   async function agendarPreloadsPosLogin_() {
@@ -2908,9 +2716,6 @@
     const periodoPedido = { de: state.periodo.de, ate: state.periodo.ate };
     const aindaValido = () => id === idPreloadsPosLogin_ && state.token === tokenDoLogin;
 
-    // Assim que a semana inicial libera o loader, a continuação histórica
-    // começa imediatamente. Exportar, Gerencial e Meta já foram iniciados
-    // em paralelo durante o próprio loader, conforme a permissão do login.
     if (!aindaValido()) return;
     await carregarHistoricoBackground_(tokenDoLogin, periodoPedido);
   }
@@ -2948,9 +2753,6 @@
     }
     restaurarBotaoAplicarPeriodo_();
   }
-  // Mensal agrega a MESMA série diária já carregada (soma por "aaaa-mm"),
-  // sem chamada nova ao servidor : cada dia já é só daquele dia, então a
-  // soma do mês é a conversão do mês, sem dupla contagem.
   function agregarSerieMensal_(serieDiaria) {
     const porMes = {};
     serieDiaria.forEach(d => {
@@ -2983,7 +2785,7 @@
       document.querySelectorAll('#linhaVisaoToggle button').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       state.linhaVisao = btn.dataset.visao;
-      state.chartDrawn = false; // troca de granularidade é contexto novo, replay do drawline faz sentido
+      state.chartDrawn = false;
       const proj = state.data ? state.data.projecao[state.setor] : { alerta: false };
       renderLinha(serieAtualLinha_(), proj.alerta);
     });
@@ -3000,18 +2802,13 @@
     toast('Erro ao carregar dados: ' + err.message);
   }
 
-  // Trocar de setor NÃO chama o servidor de novo : o payload já veio com os
-  // 3 setores e a série temporal prontos no mesmo getDashboardData, então é só
-  // reler o que já está em state.data/state.serie. É isso que faz a troca
-  // ficar instantânea (antes disparava um getDashboardData inteiro do zero
-  // a cada clique).
   document.querySelectorAll('#setorToggle button').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('#setorToggle button').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       state.setor = btn.dataset.setor;
-      state.chartDrawn = false; // troca de setor é uma mudança real de contexto : replay do drawline faz sentido aqui
-      if (!state.data) return; // ainda carregando a primeira vez
+      state.chartDrawn = false;
+      if (!state.data) return;
       renderKpis(state.data);
       renderFunil(state.data.funil[state.setor]);
       if (state.serie) {
@@ -3021,8 +2818,6 @@
     });
   });
 
-  /* ---------- Filtro de período (calendário) : vale pro dashboard inteiro,
-     exceto a tela Exportar, que já tem filtro de data próprio ---------- */
   function isoDeData_(d) {
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
@@ -3043,9 +2838,6 @@
     document.getElementById('periodoDe').value = isoParaBr_(state.periodo.de);
     document.getElementById('periodoAte').value = isoParaBr_(state.periodo.ate);
   }
-  // Mesmo mecanismo do #calendarioPopover: marca "saindo" (dispara a
-  // animação de saída via CSS) e só esconde de verdade (display:none) depois
-  // que ela termina : sem isso o fechar era instantâneo, sem transição nenhuma.
   let periodoFecharTimer = null;
   function fecharPeriodoPopover_() {
     const pop = document.getElementById('periodoPopover');
@@ -3061,17 +2853,13 @@
     const pop = document.getElementById('periodoPopover');
     if (pop.classList.contains('hidden')) return;
     if (e.target === document.getElementById('btnPeriodo') || pop.contains(e.target)) return;
-    if (e.target.closest('#calendarioPopover')) return; // escolher dia no calendário não deve fechar o popover de período
+    if (e.target.closest('#calendarioPopover')) return;
     fecharPeriodoPopover_();
   });
 
   function aplicarPeriodo_(de, ate, rotulo) {
     state.periodo = { de, ate };
     document.getElementById('periodoLabel').textContent = rotulo;
-    // carregar() também roda sozinho a cada 60s em segundo plano : essa
-    // flag existe só pra saber quando o botão Aplicar espera uma resposta
-    // visual e restaurar ele em onDados_/onErro, sem acender spinner nos
-    // refreshes automáticos (isso sim seria bem incômodo).
     state.carregandoManual = true;
     const btn = document.getElementById('btnAplicarPeriodo');
     btn.disabled = true;
@@ -3079,10 +2867,6 @@
     renderIcons();
     carregar();
   }
-  // Preset só preenche os campos e marca ativo : não aplica nem fecha o
-  // popover sozinho. Antes o clique já aplicava e fechava na hora, o que
-  // some antes do usuário conseguir ver o que escolheu; agora "Aplicar" é o
-  // único gatilho, igual ao fluxo do período Personalizado.
   let periodoPresetAtivo = null;
   document.querySelectorAll('.periodo-preset').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -3130,8 +2914,6 @@
     aplicarPeriodo_(de || null, ate || null, 'Personalizado');
   });
 
-  // A recepção permanece em Ontem + hoje. O endpoint inicial usa a semana
-  // atual apenas como janela de leitura eficiente no servidor.
   (function iniciarPeriodoPadrao_() {
     const hoje = new Date();
     const ontem = new Date(hoje);
@@ -3139,7 +2921,6 @@
     state.periodo = { de: isoDeData_(ontem), ate: isoDeData_(hoje) };
   })();
 
-  /* ---------- Tela de exportação ---------- */
   const exportState = { setor: 'Todos', formato: 'xlsx', clientes: [], correspondentes: [], carregado: false, preload: null };
   const STATUS_EXPORTACAO_ORDEM = [
     'NÃO REDIGITOU', 'PAROU NA BIO', 'CONF DE FRAUDE', 'CONFERÊNCIA', 'ASSINADO', 'CONFERIDO',
@@ -3148,8 +2929,6 @@
     'PROCESSANDO PAGAMENTO AUTOMÁTICO', 'RECOMPRA', 'REENVIANDO', 'RELIBERADO',
     'CONFERENCIA DOCUMENTO', 'CONFERIDO CDC', 'CORRIGIDO', 'BANCO', 'PAGO', 'CANCELADO'
   ];
-  // Catálogo deliberadamente fixo: a interface não revela quais motivos
-  // existem ou deixaram de existir na base consultada.
   const MOTIVOS_CANCELAMENTO_EXPORT = [
     { valor: 'CANCELADO', rotulo: 'Sem motivo informado' },
     {
@@ -3216,9 +2995,6 @@
     atualizarBotaoTodos_();
   });
 
-  /* Autocomplete próprio (sem <select>/<datalist> nativos): dropdown
-     estilizado igual ao resto da dashboard, filtra por "contém" enquanto
-     digita, clique ou Enter seleciona. */
   function ligarAutocomplete_(inputId, listaId, obterOpcoes) {
     const input = document.getElementById(inputId);
     const lista = document.getElementById(listaId);
@@ -3259,8 +3035,6 @@
   ligarAutocomplete_('exportCliente', 'exportClienteLista', () => exportState.clientes);
   ligarAutocomplete_('exportCorrespondente', 'exportCorrespondenteLista', () => exportState.correspondentes);
 
-  /* Máscara de data simples (dd/mm/aaaa) sem input type="date" : evita o
-     seletor de calendário nativo do navegador/SO. */
   function ligarMascaraData_(inputId) {
     document.getElementById(inputId).addEventListener('input', (e) => {
       let v = e.target.value.replace(/\D/g, '').slice(0, 8);
@@ -3272,17 +3046,12 @@
   ligarMascaraData_('exportDataInicio');
   ligarMascaraData_('exportDataFim');
   function dataBrParaIso_(v) {
-    // Aceita dd/mm/aaaa e dd/mm/aa como a mesma data (aa vira 20aa).
     const m = String(v || '').match(/^(\d{2})\/(\d{2})\/(\d{2}|\d{4})$/);
     if (!m) return '';
     const ano = m[3].length === 2 ? '20' + m[3] : m[3];
     return `${ano}-${m[2]}-${m[1]}`;
   }
 
-  /* ---------- Calendário custom (nada de date picker nativo do SO/navegador) :
-     um popover só, reaproveitado por qualquer campo de data do site; abre
-     ancorado no input que disparou, fecha ao escolher um dia ou clicar fora.
-     Digitar direto com máscara continua funcionando também. ---------- */
   const calState = { inputAlvo: null, mesRef: new Date() };
   const MESES_PT = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 
@@ -3328,8 +3097,6 @@
   let calFecharTimer = null;
   function fecharCalendario_() {
     const pop = document.getElementById('calendarioPopover');
-    // Antes só sumia na hora (classList.add hidden direto) : agora dá um
-    // fade+scale-out rápido antes de esconder de verdade.
     pop.classList.add('saindo');
     calFecharTimer = setTimeout(() => { pop.classList.add('hidden'); pop.classList.remove('saindo'); calFecharTimer = null; }, 150);
     calState.inputAlvo = null;
@@ -3389,8 +3156,6 @@
       renderIcons();
       atualizarBotaoTodos_();
       atualizarDatasExportacoesRapidas_();
-      // Clientes e correspondentes não mudam a cada abertura
-      // da tela, então reaproveitamos o que já carregou nesta sessão.
       if (!exportState.carregado) popularOpcoesFiltro_();
     }, 'exportar');
   }
@@ -3400,7 +3165,6 @@
   document.getElementById('btnAbrirExportar').addEventListener('click', abrirExportar);
   document.getElementById('btnFecharExportar').addEventListener('click', fecharExportar);
 
-  /* ---------- Meta (Master) : diagnóstico e caminho de ouro ---------- */
   const metaState = { cache: null, preload: null, erro: null, alvo: 80 };
 
   function ehPreviewMetaLocal_() {
@@ -3731,13 +3495,6 @@
     });
   });
 
-  /* ---------- Visão Gerencial (Admin) : Channel A/Channel B/App/Landing Page
-     dependem do scraper próprio desses canais (ainda não integrado, entram
-     zerados com disponivel:false); Call Center já vem de Raw+Pagos. ---------- */
-  // visao: 'mensal'|'diaria' usam getGerencialData(dataInicio,dataFim) normal :
-  // só muda o intervalo. 'hora' busca o dia inteiro já bucketizado por hora
-  // numa chamada só (getGerencialDataPorHora), pra o passer 7h/8h/9h trocar
-  // sem round-trip novo a cada clique (mesma lição do troca-de-setor lento).
   const gerencialState = { canal: 'geral', visao: 'mensal', dados: null, dadosAnterior: null, periodo: { de: null, ate: null }, porHora: null, hora: new Date().getHours(), serieDiaria: null, serieMensal: null, ordenacao: { chave: null, dir: 1 }, cache: null, preload: null, erroPreload: null, aberturaId: 0 };
 
   const GERENCIAL_CANAIS_PENDENTES = ['Channel A', 'Channel B', 'App', 'Landing Page'];
@@ -3754,10 +3511,6 @@
   function canalVazioCliente_(nome) {
     return { canal: nome, disponivel: false, totalPropostas: 0, valorTotalPropostas: 0, qtdeEfetivados: 0, valorLiberado: 0, comSeguro: 0, semSeguro: 0 };
   }
-  // Diferente de canalVazioCliente_ (disponivel:false : "canal ainda não
-  // integrado", mostra badge "em breve"): isso é um canal integrado que
-  // simplesmente não teve nenhuma linha naquele dia/mês específico da série
-  // já carregada : zero de verdade, sem badge de indisponível.
   function canalZerado_(nome) {
     return { canal: nome, disponivel: true, totalPropostas: 0, valorTotalPropostas: 0, qtdeEfetivados: 0, valorLiberado: 0, comSeguro: 0, semSeguro: 0 };
   }
@@ -3765,10 +3518,6 @@
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
 
-  /* ---------- Comparativo com o período anterior (KPI de delta: "▲/▼ X% vs.
-     hora/dia/mês anterior") : hora usa o bucket já carregado (sem round-trip
-     novo); diária/mensal buscam o período imediatamente anterior de mesma
-     duração numa segunda chamada em paralelo. ---------- */
   function periodoAnteriorMesmaDuracao_(de, ate) {
     const dIni = new Date(de + 'T00:00:00'), dFim = new Date(ate + 'T00:00:00');
     const dias = Math.round((dFim - dIni) / 86400000) + 1;
@@ -3776,17 +3525,11 @@
     const novoIni = new Date(novoFim); novoIni.setDate(novoIni.getDate() - (dias - 1));
     return { de: dataParaIso_(novoIni), ate: dataParaIso_(novoFim) };
   }
-  // Desloca 1 mês pra trás mantendo o dia : se a data original é o último
-  // dia do mês dela (ex.: preset "Mensal", 30/09), mira no último dia do mês
-  // anterior também (31/08), não no dia 30 literal.
   function deslocarUmMesAtras_(d) {
     const ultimoDiaDoMes = d.getDate() === new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
     if (ultimoDiaDoMes) return new Date(d.getFullYear(), d.getMonth(), 0);
     return new Date(d.getFullYear(), d.getMonth() - 1, d.getDate());
   }
-  // Compara o MESMO intervalo de dias do mês anterior (01-24/09 vs 01-24/08),
-  // não o mês anterior inteiro : senão um recorte parcial do mês atual
-  // sempre perde pra um mês anterior completo, mesmo estando melhor.
   function mesAnterior_(deIso, ateIso) {
     const de = deslocarUmMesAtras_(new Date(deIso + 'T00:00:00'));
     const ate = deslocarUmMesAtras_(new Date(ateIso + 'T00:00:00'));
@@ -3871,18 +3614,12 @@
     });
   }
 
-  // google.script.run não devolve Promise nativa. O wrapper serve tanto à
-  // chamada única do pré-carregamento quanto aos filtros personalizados.
   function chamarServidor_(nomeFn, ...args) {
     return new Promise((resolve, reject) => {
       google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[nomeFn](...args);
     });
   }
 
-  // Executa após o login do Admin, sem abrir a página nem exibir loader.
-  // Uma chamada ao Apps Script lê as bases uma vez e devolve as três visões,
-  // comparativos e séries completos. Cliques durante a busca aguardam a mesma
-  // Promise; não disparam outra rodada de consultas concorrentes.
   function precarregarGerencial_() {
     if (gerencialState.preload) return gerencialState.preload;
     const pMensal = periodoPresetVisao_('mensal');
@@ -3912,10 +3649,6 @@
       };
       gerencialState.serieDiaria = dados.serieDiaria;
       gerencialState.serieMensal = dados.serieMensal;
-      // Bordas da janela carregada : usadas pelo clique num ponto do gráfico
-      // pra saber se "o dia/mês anterior" também já está em mãos (dentro da
-      // janela) ou se precisa ficar sem comparativo em vez de mostrar um
-      // "zero" errado por causa de dado que nem foi buscado.
       gerencialState.janelaSerieDiaria = periodos.serieDiaria;
       gerencialState.janelaSerieMensal = periodos.serieMensal;
       gerencialState.erroPreload = null;
@@ -3927,14 +3660,10 @@
       }
       throw err;
     });
-    // A primeira carga é automática; sua falha fica registrada para uma nova
-    // tentativa no botão, sem gerar Promise rejeitada sem observador.
     gerencialState.preload.catch(() => {});
     return gerencialState.preload;
   }
 
-  // Usa o que já veio no pré-carregamento para o período padrão da visão.
-  // Retorna false se o cache não estiver disponível.
   function aplicarCacheVisao_(visao) {
     const c = gerencialState.cache && gerencialState.cache[visao];
     if (!c) return false;
@@ -4012,13 +3741,6 @@
     return gerencialState.dados ? gerencialState.dados.canais : [];
   }
 
-  /* ---------- Gráficos de ritmo de produção (Total de Propostas / Valor
-     Total) : granularidade acompanha a visão. Hora reaproveita o porHora já
-     carregado (zero chamada nova). Dia/mês têm uma janela fixa (30 dias e
-     6 meses terminando hoje), independente do filtro de período dos KPIs,
-     buscada uma vez só e cacheada em gerencialState. ---------- */
-  // Rótulo de dado no gráfico: sem R$, sem casa decimal : "R$33,9k" virava
-  // "33K". A legenda de insight (fmtMoeda) continua com o formato completo.
   function fmtMoedaCompacta_(v) {
     const abs = Math.abs(v || 0);
     const sinal = v < 0 ? '-' : '';
@@ -4027,9 +3749,6 @@
     return sinal + Math.round(abs);
   }
 
-  // Placeholder leve nos gráficos enquanto a série de dia/mês ainda não
-  // chegou : o loader cheio já apareceu e sumiu pros KPIs, reabrir ele de
-  // novo só pro gráfico piscaria a tela; um texto simples aqui já avisa.
   const IDS_GRAFICOS_GERENCIAL = ['gerGraficoTotal', 'gerGraficoValor', 'gerGraficoEfetivados', 'gerGraficoPago'];
   function renderCarregandoGrafico_() {
     document.getElementById('gerencialGraficosWrap').classList.remove('hidden');
@@ -4062,15 +3781,10 @@
     }
   }
 
-  // As 4 métricas dos gráficos de ritmo : mesmas chaves usadas nos cards
-  // (GERENCIAL_COLUNAS), só os 2 pares numéricos que viram gráfico de barra.
   const METRICAS_GRAFICO_GERENCIAL = ['totalPropostas', 'valorTotalPropostas', 'qtdeEfetivados', 'valorLiberado'];
   function bucketZeradoGrafico_() {
     return { totalPropostas: 0, valorTotalPropostas: 0, qtdeEfetivados: 0, valorLiberado: 0 };
   }
-  // gerencialState.canal === 'geral' soma o bucket dos 5 canais; um canal
-  // específico usa só o dele. porHora/serieDiaria/serieMensal chegam do
-  // servidor já separados por canal (ver serieTodosCanais_ em Code.gs).
   function valorBucketHora_(h) {
     if (!gerencialState.porHora) return bucketZeradoGrafico_();
     if (gerencialState.canal !== 'geral') {
@@ -4097,8 +3811,6 @@
   function serieGraficoAtual_() {
     if (gerencialState.visao === 'hora') {
       if (!gerencialState.porHora) return [];
-      // Só entram horas com algum valor : 24 barras com a maioria zerada
-      // deixava o eixo X cheio de espaço vazio sem coluna nenhuma.
       return Array.from({ length: 24 }, (_, h) => {
         const b = valorBucketHora_(h);
         return Object.assign({ chave: h, label: String(h).padStart(2, '0') + 'h', destaque: h === gerencialState.hora }, b);
@@ -4111,11 +3823,6 @@
     return serieAgregadaOuCanal_(gerencialState.serieMensal).map(p => Object.assign({ label: p.rotulo, destaque: p.chave === mesSelecionado }, p));
   }
 
-  // canaisDeSerie_ monta o mesmo formato de getGerencialData().canais a
-  // partir da série já carregada (serieDiaria/serieMensal têm as mesmas 6
-  // métricas por canal, por dia/mês : computeCanalSerie_ em Code.gs). Chave
-  // sem bucket = zero de verdade nesse ponto (canalZerado_), não "não
-  // integrado" (canalVazioCliente_ é só pra quando a série nem carregou).
   function canaisDeSerie_(serieObj, chave) {
     if (!serieObj) return TODOS_CANAIS_GERENCIAL.map(canalVazioCliente_);
     return TODOS_CANAIS_GERENCIAL.map(nome => {
@@ -4129,17 +3836,10 @@
   }
   function chaveMesAnterior_(chaveAnoMes) {
     const [ano, mes] = chaveAnoMes.split('-').map(Number);
-    const d = new Date(ano, mes - 2, 1); // mes é 1-indexado na chave; -2 leva ao mês anterior em Date (0-indexado)
+    const d = new Date(ano, mes - 2, 1);
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
   }
 
-  // Clique numa barra (qualquer um dos 2 gráficos da mesma seção) seleciona
-  // aquele ponto pra a página inteira. Hora troca local (sem chamada nova,
-  // já era assim). Dia/mês: a série de 30 dias/6 meses já pré-carregada tem
-  // as mesmas 6 métricas por canal que o card usa : monta os KPIs/tabela
-  // direto dela, sem round-trip novo nem tela de carregamento. Comparativo
-  // "vs. anterior" só entra se o ponto anterior também estiver dentro da
-  // janela já carregada; fora dela fica sem comparativo (não inventa zero).
   function selecionarPontoGrafico_(chave) {
     if (gerencialState.visao === 'hora') {
       gerencialState.hora = Number(chave);
@@ -4203,8 +3903,6 @@
       const altura = Math.max(0, (H - padB) - yTopo);
       const cor = p.destaque ? 'var(--lime)' : 'var(--olive)';
       const chave = String(p.chave);
-      // Faixa invisível de altura total = alvo de clique, mais fácil de
-      // acertar que a barra em si quando o valor é baixo (barra bem fina).
       svgInner += `<rect class="ger-hit" data-chave="${chave}" x="${(padL + passo * i).toFixed(1)}" y="${padT}" width="${passo.toFixed(1)}" height="${(H - padT - padB).toFixed(1)}"/>`;
       svgInner += `<rect class="ger-barra" data-chave="${chave}" x="${x.toFixed(1)}" y="${yTopo.toFixed(1)}" width="${barW.toFixed(1)}" height="${altura.toFixed(1)}" rx="2.5" fill="${cor}" opacity="${p.destaque ? '1' : '0.72'}" style="pointer-events:none"/>`;
       if (mostrarValor && valor > 0) {
@@ -4298,13 +3996,9 @@
     });
   });
 
-  /* ---------- Mensal / Diária / Hora em hora ---------- */
   function atualizarLabelHora_() {
     document.getElementById('gerencialHoraLabel').textContent = String(gerencialState.hora).padStart(2, '0') + 'h';
   }
-  // Mesmo período padrão usado pelo pré-carregamento (precarregarGerencial_)
-  // e pela troca de visão normal : uma função só, os dois sempre concordam
-  // no que é "o período padrão dessa visão".
   function periodoPresetVisao_(visao) {
     const hoje = new Date();
     if (visao === 'mensal') {
@@ -4336,8 +4030,6 @@
       btn.classList.add('active');
       gerencialState.visao = btn.dataset.visao;
       aplicarPresetVisao_(gerencialState.visao);
-      // A troca de visão relê o período padrão pré-carregado. Se o cache
-      // faltar, atualiza os dados no local, sem cobrir a página.
       if (!aplicarCacheVisao_(gerencialState.visao)) carregarGerencial_();
     });
   });
@@ -4347,12 +4039,6 @@
   ligarMascaraData_('gerencialDataInicio');
   ligarMascaraData_('gerencialDataFim');
   ligarMascaraData_('gerencialDiaHora');
-  // "Aplicar" sempre busca do servidor : um atalho local (resolver com a
-  // série já pré-carregada, sem round-trip) foi tentado aqui, mas causava a
-  // tabela "Visão geral" ficar presa nos dados antigos em alguns casos
-  // (o gráfico mudava : depende só de periodo.de pro destaque : mas a
-  // tabela não). Num clique deliberado em "Aplicar" vale mais a garantia de
-  // dado certo do que evitar uma consulta.
   document.getElementById('btnAplicarGerencial').addEventListener('click', () => {
     gerencialState.periodo.de = dataBrParaIso_(document.getElementById('gerencialDataInicio').value);
     gerencialState.periodo.ate = dataBrParaIso_(document.getElementById('gerencialDataFim').value);
@@ -4478,7 +4164,6 @@
     executarExportacao_(filtros);
   });
 
-  /* ---------- Blocos protegidos por blur (Não assinados / Cancelados) ---------- */
   const DURACAO_DESBLOQUEIO_MS = 10 * 60 * 1000;
   const blocoState = { na: { timer: null }, canc: { timer: null } };
   let blocoAlvoDesbloqueio = null;
@@ -4486,19 +4171,8 @@
   function elementoBloco_(chave) { return document.getElementById(chave === 'na' ? 'blocoNA' : 'blocoCanc'); }
   function chaveLocalStorageBloco_(chave) { return 'assina_ai_desbloqueio_' + chave; }
 
-  // Uma vez que a senha foi aceita nessa sessão, o cadeado vira um botão
-  // simples de ocultar/desocultar : não pede senha de novo pra reesconder e
-  // reexibir, marcando "manter" ou não (isso só decide se sobrevive a
-  // recarregar a página, não se pede senha a cada clique do cadeado).
   let blocosAutenticados = false;
 
-  // renderIcons() (lucide) SUBSTITUI a tag <i data-lucide> por um <svg> :
-  // então na 2ª chamada em sequência (uma pra cada bloco) não existe mais
-  // <i> nenhuma pra achar, .querySelector('i') volta null e o
-  // .setAttribute quebrava com exceção, travando todo o resto do código de
-  // desbloqueio no meio (inclusive o fechar do popup). Recriar a <i> do
-  // zero a cada chamada evita depender de achar um elemento que pode já
-  // ter sido convertido.
   function atualizarIconeCadeado_(chave) {
     const btn = document.querySelector('.bloco-lock-btn[data-bloco="' + chave + '"]');
     if (!btn) return;
@@ -4514,12 +4188,6 @@
     try { localStorage.removeItem(chaveLocalStorageBloco_(chave)); } catch (e) {}
     atualizarIconeCadeado_(chave);
   }
-  // Os 10 minutos de visibilidade valem igual nos dois casos : a diferença é
-  // só se sobrevivem a recarregar a página. manter = true: o horário exato
-  // de expiração vai pro localStorage; ao reabrir o site (restaurarDesbloqueiosPersistidos_,
-  // chamado no login), se esses 10 minutos ainda não passaram, desbloqueia
-  // direto sem pedir senha de novo. manter = false: mesmos 10 minutos, mas
-  // só nessa aba/carga : recarregar já pede senha.
   function desbloquearBloco_(chave, manter, expiraEmForcado) {
     elementoBloco_(chave).classList.remove('bloqueado');
     if (blocoState[chave].timer) { clearTimeout(blocoState[chave].timer); blocoState[chave].timer = null; }
@@ -4536,9 +4204,6 @@
     }, restante);
     atualizarIconeCadeado_(chave);
   }
-  // Roda no login: reaplica qualquer desbloqueio "manter" ainda dentro dos
-  // 10 minutos, sem pedir senha de novo : é isso que faz sobreviver a
-  // recarregar a página ou fechar e reabrir o site.
   function restaurarDesbloqueiosPersistidos_() {
     ['na', 'canc'].forEach(chave => {
       let expiraEm = null;
@@ -4550,10 +4215,6 @@
     });
   }
 
-  // Clicar no blur (olho) ou no cadeado já autenticado desbloqueia os 2
-  // blocos direto, sem pedir senha de novo : só a PRIMEIRA vez (ou depois
-  // que os 10 min expiraram e travou de novo sem "manter" persistido) pede
-  // senha mesmo.
   function desbloquearOuPedirSenha_(chave) {
     if (blocosAutenticados) {
       ['na', 'canc'].forEach(c => desbloquearBloco_(c, false));
@@ -4570,9 +4231,6 @@
   document.querySelectorAll('.bloco-blur-overlay').forEach(el => {
     el.addEventListener('click', () => desbloquearOuPedirSenha_(el.dataset.bloco));
   });
-  // O cadeado é um botão de ocultar/desocultar só : trava os 2 juntos
-  // (blur), ou desbloqueia os 2 juntos (senha só se ainda não autenticou
-  // nessa sessão).
   document.querySelectorAll('.bloco-lock-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const chave = btn.dataset.bloco;
@@ -4604,19 +4262,11 @@
         document.getElementById('unlockErro').classList.remove('hidden');
         return;
       }
-      // Desbloquear qualquer um dos 2 blocos libera os dois juntos : senão
-      // fica sem sentido pedir senha de novo pra ver a segunda tabela um
-      // segundo depois de já ter digitado a mesma senha pra primeira.
       blocosAutenticados = true;
       const manter = document.getElementById('unlockManter').checked;
-      // try/catch por bloco: uma falha ao processar 'na' nunca mais pode
-      // impedir 'canc' de desbloquear (nem o popup de fechar) : foi
-      // exatamente uma exceção no meio desse loop que travava tudo antes.
       ['na', 'canc'].forEach(chave => {
         try {
           desbloquearBloco_(chave, manter);
-          // destaque breve no bloco liberado : o blur já tem transição
-          // própria, isso dá um sinal a mais de "acabou de acontecer algo aqui".
           const bloco = elementoBloco_(chave);
           bloco.classList.add('bloco-flash');
           setTimeout(() => bloco.classList.remove('bloco-flash'), 1000);
@@ -4633,7 +4283,6 @@
     }).verificarSenhaAtual(state.token, senha);
   });
 
-  /* ---------- Baixar direto de um bloco (mesmo mecanismo da tela Exportar) ---------- */
   document.querySelectorAll('.bloco-download-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const bloco = btn.dataset.bloco === 'canc' ? 'cancelados' : 'naoAssinados';

@@ -1,36 +1,17 @@
-/** ============================================================
- *  ASSINA AI : DASHBOARD DE ESTEIRA & CONVERSÃO
- *  Toda a lógica server-side vive aqui. O filtro de Correspondente e a
- *  taxonomia de Cancelados foram portados de uma ferramenta desktop que este
- *  dashboard substituiu, pra manter as mesmas regras de negócio.
- *
- *  Versão pública: nomes, planilhas e credenciais reais foram removidos. Os
- *  dados vêm de uma planilha Google (ver README) ou de demo/demo_data.json.
- *  ============================================================ */
-
 const SHEET_RAW = 'Raw';
-// Visão Gerencial (Callcenter) : bases de produção, abas próprias, separadas
-// da Raw (Page inicial) pra não misturar recortes nem duplicar.
-const SHEET_GER_TOTAL = 'TotalPropostas'; // todas as propostas (fonte principal da visão gerencial)
-const SHEET_GER_EFETIVADOS = 'Efetivados'; // propostas pagas (só Pago)
-const SHEET_GER_EFETIVADOS_API = 'EfetivadosAPI'; // pagas dos 4 canais API (fonte própria)
+const SHEET_GER_TOTAL = 'TotalPropostas';
+const SHEET_GER_EFETIVADOS = 'Efetivados';
+const SHEET_GER_EFETIVADOS_API = 'EfetivadosAPI';
 const SHEET_SUPERVISORES = 'Supervisores';
 const SHEET_CONFIG = 'Config';
 const SHEET_SNAPSHOT = 'Snapshot_Diario';
-const SHEET_ATRIBUICOES = 'Atribuicoes'; // reservado, não usado ainda
+const SHEET_ATRIBUICOES = 'Atribuicoes';
 const SHEET_USUARIOS = 'Usuarios';
 const SHEET_TENTATIVAS = 'TentativasLogin';
 const SHEET_LOG_ACESSOS = 'LogAcessos';
 const PLANILHA_ID_PROP = 'ASSINA_AI_PLANILHA_ID';
 let PLANILHA_ABERTA_ = null;
 
-/* Este é um projeto Apps Script standalone (não é container-bound a uma
-   planilha específica) : o método getActive() do SpreadsheetApp sempre
-   devolve null aqui, tanto rodando pelo editor quanto atendendo o Web App.
-   planilha_() substitui esse método em todo o arquivo: abre a planilha
-   pelo ID salvo
-   nas Script Properties, e cria uma na primeira execução se ainda não
-   existir (mesmo padrão do projeto irmão Portal da Qualidade). */
 function planilha_() {
   if (PLANILHA_ABERTA_) return PLANILHA_ABERTA_;
   const props = PropertiesService.getScriptProperties();
@@ -40,7 +21,6 @@ function planilha_() {
       PLANILHA_ABERTA_ = SpreadsheetApp.openById(id);
       return PLANILHA_ABERTA_;
     } catch (e) {
-      // ID salvo não abre mais (planilha apagada/movida) : recria abaixo.
     }
   }
   const ss = SpreadsheetApp.create('Assina AI : Database');
@@ -50,14 +30,7 @@ function planilha_() {
   return PLANILHA_ABERTA_;
 }
 
-// Antes era um match por palavra-chave frouxo : só por sorte não deixava passar
-// lixo. Agora é uma lista fechada de nomes exatos (aqui, 2 correspondentes
-// fictícios; troque pela sua lista).
 const CORRESPONDENTES_VALIDOS = ['CORRESPONDENT A - 0001', 'CORRESPONDENT B - 0002'];
-// Correspondent A é o correspondente usado pro backfill histórico dos canais API
-// (Channel A/Channel B/App/Landing Page) : só devia ter propostas com Analista
-// "API ...". Qualquer linha de Correspondent A com analista humano é
-// contaminação e não deve entrar em nenhuma leitura.
 const CORRESPONDENTE_API = 'CORRESPONDENT A - 0001';
 
 const STATUS_LABEL = {
@@ -87,8 +60,6 @@ const STATUS_LABEL = {
   'não assinado': 'NÃO REDIGITOU'
 };
 
-// Estágios "vivos" da esteira (nem Pago nem Cancelado) : usados pra decidir
-// o que conta como "convertível" na projeção de ritmo diário.
 const ESTAGIOS_ESTEIRA = [
   'NÃO REDIGITOU', 'PAROU NA BIO', 'CONF DE FRAUDE', 'CONFERÊNCIA',
   'ASSINADO', 'CONFERIDO', 'LIBERADO', 'PENDENTE', 'PENDENTE ANTIFRAUDE',
@@ -103,7 +74,6 @@ const ESTAGIO_CANCELADO = 'CANCELADO';
 const MOTIVO_TN_ORIGINAL = 'REGISTRY RETURN FAILURE: TN - Monthly interest rate is invalid: it must be lower than or equal to the CET rate, with a spread of at most 1.00%';
 const MOTIVO_TN_CURTO = 'REGISTRY RETURN FAILURE: CET RATE 1.00%';
 
-// [rótulo de exibição, palavra-chave buscada em "Analista"]
 const APP_GROUPS = [
   ['API Consignado - Landing Page', 'LANDING'],
   ['API Consignado App', 'APP'],
@@ -113,9 +83,6 @@ const APP_GROUPS = [
   ['API Consignado Channel B', 'CHANNEL B']
 ];
 
-/** ============================================================
- *  UTILITÁRIOS
- *  ============================================================ */
 function normalizeCpf_(cpf) {
   return String(cpf || '').replace(/\D/g, '');
 }
@@ -143,11 +110,6 @@ function convertMonetaryToFloat_(value) {
   return isNaN(n) ? NaN : n;
 }
 
-// CacheService recusa qualquer valor acima de ~100KB por chave : com a base
-// na casa das dezenas de milhares de linhas, o JSON de payload/conversão da
-// equipe passa disso fácil, e o cache falhava silenciosamente (todo poll de
-// 60s recomputava do zero, era o principal motivo do site pesado). Guarda em
-// pedaços de 90KB sob chaves numeradas + uma chave "_n" com a contagem.
 function cachePutJson_(cache, key, valor, ttlSegundos) {
   const str = JSON.stringify(valor);
   const TAM = 90000;
@@ -157,7 +119,7 @@ function cachePutJson_(cache, key, valor, ttlSegundos) {
     for (let i = 0; i < total; i++) entradas[key + '_' + i] = str.substr(i * TAM, TAM);
     entradas[key + '_n'] = String(total);
     cache.putAll(entradas, ttlSegundos);
-  } catch (e) { /* mesmo em pedaços não coube : segue sem cachear, nunca derruba a resposta */ }
+  } catch (e) {  }
 }
 function cacheGetJson_(cache, key) {
   const totalStr = cache.get(key + '_n');
@@ -169,7 +131,7 @@ function cacheGetJson_(cache, key) {
   let str = '';
   for (let i = 0; i < total; i++) {
     const parte = partes[key + '_' + i];
-    if (parte === undefined || parte === null) return null; // pedaço expirou antes do resto
+    if (parte === undefined || parte === null) return null;
     str += parte;
   }
   try { return JSON.parse(str); } catch (e) { return null; }
@@ -186,20 +148,11 @@ function classificarEstagioAtual_(statusAdmin) {
   return STATUS_LABEL[norm] || norm.toUpperCase();
 }
 
-/** ============================================================
- *  AUTENTICAÇÃO : login próprio (usuário/senha), mesmo desenho do projeto
- *  irmão Portal da Qualidade. O Web App em si fica aberto
- *  (appsscript.json: ANYONE) porque quem protege os dados de verdade é
- *  esta camada: nenhuma função que devolve dado (getDashboardData,
- *  getSerieTemporal, exportarBase) funciona sem um token de sessão válido.
- *  ============================================================ */
 const CHAVE_SESSAO_PROP = 'ASSINA_AI_CHAVE_SESSAO';
 const MENSAGEM_ERRO_LOGIN = 'Login ou senha incorretos. Tente novamente.';
 const REGEX_LOGIN_VALIDO = /^[A-Za-z0-9._-]{3,40}$/;
 const REGEX_EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}]/u;
 
-// 5 tentativas -> 2min | 10 -> 1h | 15 -> 6h | 20 -> 48h. Cumulativo desde o
-// último acerto; só zera com login bem-sucedido.
 const LIMITES_BLOQUEIO = [
   { minimo: 20, minutos: 48 * 60 },
   { minimo: 15, minutos: 6 * 60 },
@@ -280,7 +233,7 @@ function lerUsuarios_() {
   const cacheado = cache.get('usuarios_v1');
   if (cacheado) return JSON.parse(cacheado);
   const dados = planilha_().getSheetByName(SHEET_USUARIOS).getDataRange().getValues();
-  try { cache.put('usuarios_v1', JSON.stringify(dados), 300); } catch (e) { /* linha grande demais pro cache : segue sem cachear */ }
+  try { cache.put('usuarios_v1', JSON.stringify(dados), 300); } catch (e) {  }
   return dados;
 }
 
@@ -331,10 +284,6 @@ function verificarLogin(login, senha, deviceToken) {
   };
 }
 
-/* Reautenticação leve pro desbloqueio dos blocos com blur (Não assinados /
-   Cancelados) : confere a senha do usuário já logado sem gerar sessão nova
-   nem mexer no contador de tentativas de login (esse bloqueio é sobre
-   visibilidade de dado, não sobre acesso ao sistema). */
 function verificarSenhaAtual(tokenSessao, senha) {
   const sessao = exigirSessaoValida_(tokenSessao);
   if (!sessao) return { ok: false, mensagem: 'Sessão inválida ou expirada. Faça login novamente.' };
@@ -351,7 +300,7 @@ function verificarSenhaAtual(tokenSessao, senha) {
 function registrarAcessoAsync(login, papel, sucesso, detalhe) {
   try {
     planilha_().getSheetByName(SHEET_LOG_ACESSOS).appendRow([new Date(), login, papel, sucesso, detalhe || '']);
-  } catch (e) { /* log nunca pode travar o fluxo principal */ }
+  } catch (e) {  }
 }
 
 function chaveAssinatura_() {
@@ -401,13 +350,6 @@ function exigirMaster_(tokenSessao) {
   return (v && String(v.login || '').toLowerCase() === 'master') ? v : null;
 }
 
-/* ============================================================
- *  META : configuração mensal compartilhada pelo login Master.
- *  A primeira versão entrega o contrato de dados e uma demonstração visual;
- *  a fonte operacional definitiva entra depois sem mudar o formato consumido
- *  pelo cliente. ScriptProperties mantém a configuração comum a qualquer
- *  pessoa que use o mesmo acesso Master.
- *  ============================================================ */
 const META_PROP_PREFIXO = 'ASSINA_AI_META_CONFIG_';
 const META_TIMEZONE = 'America/Sao_Paulo';
 
@@ -587,10 +529,6 @@ function getMetaBootstrap(tokenSessao) {
   };
 }
 
-/* Administração de usuários : funções públicas (sem "_" no fim) de propósito:
-   no Apps Script, função com underscore final é privada e não aparece no
-   seletor de execução do editor. Nunca editar SenhaHash na mão na planilha :
-   ela é derivada de senha+salt. */
 function criarUsuario(login, senha, papel) {
   const aba = planilha_().getSheetByName(SHEET_USUARIOS);
   const salt = Utilities.getUuid();
@@ -613,9 +551,6 @@ function redefinirSenha(login, novaSenha) {
   return false;
 }
 
-/** ============================================================
- *  DATA/HORA e CRUZAMENTO COM O LOG DE LIGAÇÕES (retorno ao cliente)
- *  ============================================================ */
 const SHEET_CALL_LOG = 'CallLog';
 const DURACAO_MINIMA_SUCESSO_SEGUNDOS = 3;
 
@@ -623,17 +558,6 @@ function normalizeTelefone_(v) {
   return String(v || '').replace(/\D/g, '');
 }
 
-/* Reduz um telefone a um "padrão de 10 dígitos" (DDD + 8 dígitos) pra
-   comparar a base financeira (Raw "Celular", nunca tem DDI) com o log de
-   ligações ("Destino", às vezes vem com DDI : ex.: "0000900000001"):
-   - 10 dígitos: já é o padrão, não mexe.
-   - 11 dígitos: celular com o "9" extra (DDD + 9 + 8 dígitos, marcação de
-     nono dígito que alguns estados usam) : remove esse "9" (3º dígito).
-   - 12 dígitos: DDI + DDD + 8 dígitos : remove os 2 primeiros (DDI).
-   - 13 dígitos: DDI + celular com "9" (DDI + DDD + 9 + 8) : remove o DDI
-     primeiro, cai no caso de 11 e remove o "9" também.
-   Sem isso, o cruzamento era por igualdade exata de string e nunca batia
-   quando um lado tinha DDI e o outro não (ou um tinha o "9" e o outro não). */
 function telefonePadrao10_(v) {
   let d = normalizeTelefone_(v);
   if (d.length === 12 || d.length === 13) d = d.slice(2);
@@ -641,8 +565,6 @@ function telefonePadrao10_(v) {
   return d;
 }
 
-/* "Solic. Proposta" pode chegar como Date real do Sheets, "19/02/2026" ou
-   "2026-02-19 00:00:00". A hora também pode ser Date, fração de dia ou texto. */
 function parseDataHoraProposta_(dataStr, horaStr) {
   let ano, mes, dia;
   if (dataStr instanceof Date && !isNaN(dataStr.getTime())) {
@@ -670,8 +592,6 @@ function parseDataHoraProposta_(dataStr, horaStr) {
   return isNaN(dt.getTime()) ? null : dt;
 }
 
-/* DataHora do CallLog sai da sincronização já normalizada como
-   "dd/mm/aaaa HH:MM:SS". */
 function parseDataHoraBr_(str) {
   const m = cleanText_(str).match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2}):(\d{2})/);
   if (!m) return null;
@@ -694,21 +614,12 @@ function getCallLogPorTelefone_(telefonesNecessarios) {
     const dataHora = parseDataHoraBr_(values[r][1]);
     if (!celular || !dataHora) continue;
     if (!mapa[celular]) mapa[celular] = [];
-    // Timestamp numérico sobrevive ao JSON do cache sem depender de reviver
-    // objetos Date quando o mapa é reutilizado em outra execução.
     mapa[celular].push({ dataHora: dataHora.getTime(), segundos: Number(values[r][2]) || 0 });
   }
   if (!telefonesNecessarios) cachePutJson_(cache, 'call_log_v1', mapa, 600);
   return mapa;
 }
 
-/* "Retornou ao Cliente" / "Tentativas de Retorno" / "Tentativas Bem
-   Sucedidas" : só conta ligação de SAÍDA feita DEPOIS do horário da
-   proposta (CallLog já vem filtrado só com saída na sincronização).
-   Sucesso = duração (Tempo_Conversa, com Tempo_Atendimento de fallback)
-   >= DURACAO_MINIMA_SUCESSO_SEGUNDOS : o rótulo de Resultado da ligação
-   mistura "caiu" com "cliente desligou" no mesmo texto e não dá pra
-   separar só por ele, então o critério é a duração real da ligação. */
 function calcularRetornoCliente_(celularRow, dataHoraProposta, callLogMap) {
   if (!dataHoraProposta) return { retornouCliente: false, tentativasRetorno: 0, tentativasBemSucedidas: 0 };
   const instanteProposta = dataHoraProposta.getTime();
@@ -718,17 +629,6 @@ function calcularRetornoCliente_(celularRow, dataHoraProposta, callLogMap) {
   return { retornouCliente: chamadas.length > 0, tentativasRetorno: chamadas.length, tentativasBemSucedidas: bemSucedidas };
 }
 
-/* Tabulações (Retorno Tentativa 1º/2º) : planilha externa própria da
-   operação, 1 aba por operador, layout idêntico em todas (linha 1 = título
-   com nome/turno, linha 2 vazia, linha 3 = cabeçalho, dados a partir da
-   linha 4). Cruzamento por Nº Proposta, não por operador : a proposta pode
-   ter sido tabulada por qualquer um, e cada aba já é só o recorte de quem
-   trabalhou nela. Abas de resumo/consolidado são ignoradas; qualquer aba
-   fora do layout esperado (vazia, cabeçalho diferente) é pulada sem quebrar
-   o resto, igual o padrão já usado pra CallLog. */
-// O ID da planilha de tabulações NUNCA fica no código: vem das Script
-// Properties (chave abaixo). Sem a propriedade, o mapa fica vazio e o
-// restante do dashboard funciona normalmente.
 const TABULACOES_ID_PROP = 'ASSINA_AI_TABULACOES_PLANILHA_ID';
 const ABAS_TABULACOES_IGNORAR_ = new Set([
   'MENU', 'CONSOLIDADO', 'BASE DE DADOS', 'BASE DE DADOS - CANCELADOS',
@@ -737,8 +637,6 @@ const ABAS_TABULACOES_IGNORAR_ = new Set([
 
 function getMapaTabulacoes_() {
   const cache = CacheService.getScriptCache();
-  // v2 : a v1 podia ter sido cacheada vazia por uma falha silenciosa antes
-  // do log existir abaixo; o bump garante uma leitura nova agora.
   const cacheado = cacheGetJson_(cache, 'tabulacoes_v2');
   if (cacheado) return cacheado;
 
@@ -755,11 +653,6 @@ function getMapaTabulacoes_() {
       const ultimaColuna = aba.getLastColumn();
       if (ultimaLinha < 4 || ultimaColuna < 1) return;
 
-      // NÃO usa cleanText_ aqui : ela aplica normalize('NFKC'), que funde o
-      // indicador ordinal 'º' em "superscript o" num 'o' comum (decomposição
-      // de compatibilidade do Unicode) e quebrava silenciosamente o match
-      // contra 'Nº PROPOSTA'/'RETORNO TENTATIVA 1º' logo abaixo. Comparação
-      // de cabeçalho só precisa de trim + maiúsculas, sem normalizar texto.
       const cabecalho = aba.getRange(3, 1, 1, ultimaColuna).getValues()[0]
         .map(h => String(h || '').trim().toUpperCase());
       const colProposta = cabecalho.indexOf('Nº PROPOSTA');
@@ -779,20 +672,11 @@ function getMapaTabulacoes_() {
       });
     });
   } catch (e) {
-    // console.log (não Logger.log) : a view nova de Execuções do Apps
-    // Script roda em cima do Cloud Logging e nem sempre mostra Logger.log
-    // em tempo útil, console.log aparece de forma confiável lá. A causa
-    // mais provável de falha aqui é a planilha de tabulações não estar
-    // compartilhada com a conta que executa este Web App (é uma planilha
-    // de outro dono, diferente da "Assina AI : Database" própria do projeto).
     console.error('getMapaTabulacoes_ falhou: ' + e);
-    return mapa; // não cacheia falha : a próxima chamada tenta de novo, não fica 10min preso num mapa vazio
+    return mapa;
   }
 
   if (abasEncontradas === 0) {
-    // Nenhuma aba com o layout esperado foi lida : spreadsheet abriu mas
-    // não achou nada reconhecível (cabeçalho mudou, ou só abas vazias).
-    // Também não cacheia, pra não mascarar o problema por 10 minutos.
     console.warn('getMapaTabulacoes_: planilha de tabulações abriu, mas nenhuma aba teve o cabeçalho esperado (Nº PROPOSTA / RETORNO TENTATIVA).');
     return mapa;
   }
@@ -802,16 +686,6 @@ function getMapaTabulacoes_() {
   return mapa;
 }
 
-/** ============================================================
- *  LEITURA DA BASE (aba Raw), com o mesmo filtro de Correspondente
- *  aplicado globalmente (mesma regra da ferramenta desktop original).
- *  ============================================================ */
-/* dataInicio/dataFim (yyyy-mm-dd, opcionais) filtram por "Solic. Proposta"
-   : é o filtro de período global do topo do dashboard. Passar sem esses
-   parâmetros (como a tela Exportar faz) devolve tudo, sem esse recorte. */
-// Shared pela Raw (Page inicial) e pelas abas TotalPropostas/Efetivados
-// (Gerencial) : lê por nome de coluna, mesmo filtro de Correspondente e
-// mesma janela de data (Solic. Proposta + Hora Solic. Proposta).
 function lerAbaProfostas_(nomeAba, dataInicio, dataFim) {
   const sh = planilha_().getSheetByName(nomeAba);
   if (!sh) return { headers: [], rows: [] };
@@ -824,11 +698,6 @@ function lerAbaProfostas_(nomeAba, dataInicio, dataFim) {
   let values;
   const dataIdx = headers.indexOf('Solic. Proposta');
   if ((dataInicio || dataFim) && dataIdx !== -1) {
-    // A planilha tem dezenas de colunas. Para um período curto, primeiro lê
-    // apenas a coluna de data, descobre o menor intervalo físico que contém
-    // correspondências e só então transfere as linhas completas desse trecho.
-    // Continua correto mesmo se a aba estiver fora de ordem: o filtro exato
-    // abaixo permanece sendo aplicado linha a linha.
     const datas = sh.getRange(2, dataIdx + 1, ultimaLinha - 1, 1).getValues();
     const limiteInicioBusca = dataInicio ? new Date(dataInicio + 'T00:00:00') : null;
     const limiteFimBusca = dataFim ? new Date(dataFim + 'T23:59:59') : null;
@@ -857,11 +726,6 @@ function lerAbaProfostas_(nomeAba, dataInicio, dataFim) {
     if (corrIdx !== -1) {
       const corr = String(row[corrIdx] || '').trim().toUpperCase();
       if (CORRESPONDENTES_VALIDOS.indexOf(corr) === -1) continue;
-      // Correspondent A só é válido pros canais API na aba Raw : qualquer linha
-      // dele com analista humano ali é contaminação. Não aplica às abas de
-      // Gerencial (TotalPropostas/Efetivados vêm de outra fonte; o Callcenter
-      // de Correspondent A lá já é separado corretamente por classificarSetor_,
-      // não pela origem da linha).
       if (nomeAba === SHEET_RAW && corr === CORRESPONDENTE_API && analistaIdx !== -1) {
         const analista = String(row[analistaIdx] || '').toUpperCase();
         if (analista.indexOf('API') === -1) continue;
@@ -937,17 +801,6 @@ function getConfig_() {
   };
 }
 
-/** ============================================================
- *  DEDUPLICAÇÃO POR CLIENTE : cada cliente conta pela proposta MAIS RECENTE
- *  (Solic. Proposta + Hora Solic. Proposta), tentativas antigas saem do
- *  cálculo. Chave do cliente: ID Cliente (CPF vem mascarado nessa base, não
- *  dá pra usar : mesmo motivo da ferramenta desktop original, que também usa ID Cliente
- *  agora). É a MESMA passada usada pelo Funil e pelo painel Não Assinados :
- *  antes eram dois cálculos separados (Funil contava toda linha, Não
- *  Assinados deduplicava), o que fazia os totais não baterem entre o visual
- *  de cima e as tabelas de baixo. Calculado uma vez em getDashboardData e
- *  reaproveitado por computeFunil_/computeNaoAssinados_.
- *  ============================================================ */
 function agruparMaisRecentePorCliente_(rows) {
   const maisRecentePorCliente = {};
   rows.forEach(row => {
@@ -963,16 +816,6 @@ function agruparMaisRecentePorCliente_(rows) {
   return Object.values(maisRecentePorCliente);
 }
 
-/** ============================================================
- *  FUNIL GERAL (estágio atual por CLIENTE, não por linha de proposta : cada
- *  cliente conta uma vez só, pela tentativa mais recente; é a visão
- *  principal da esteira até Pago, separável por setor).
- *  ============================================================ */
-// Computa os 3 setores de uma vez (Todos/Callcenter/API) na mesma passada
-// pelas linhas : troca de setor no cliente vira só escolher a fatia certa
-// do payload, sem chamada nova ao servidor (era isso que deixava a troca
-// lenta: cada clique em Callcenter/API disparava getDashboardData do zero,
-// relendo Raw/Supervisores/CallLog/Snapshot inteiros de novo).
 function computeFunil_(clientesMaisRecentes) {
   const resultado = {
     Todos: { contagem: {}, valores: {} },
@@ -991,34 +834,11 @@ function computeFunil_(clientesMaisRecentes) {
   return resultado;
 }
 
-/** ============================================================
- *  SNAPSHOT DIÁRIO : pré-agregação usada tanto pra performance quanto
- *  pra série histórica da projeção. Rodado por trigger de tempo
- *  (ver configurarTriggers()).
- *  ============================================================ */
-// A coluna "Data" às vezes vem como Date real (não string) : o Sheets
-// converte sozinho uma string "aaaa-MM-dd" escrita por Utilities.formatDate
-// pra um valor de data de verdade dependendo do formato herdado da célula.
-// Sem normalizar aqui: comparação "!== hoje" nunca bate (linha duplica todo
-// dia em vez de substituir) e getSerieTemporal devolve o toString() inteiro
-// do Date ("Sun Sep 27 2026 00:00:00 GMT-0300...") no lugar de "aaaa-MM-dd".
 function normalizarDataCelula_(valor) {
   if (valor instanceof Date) return Utilities.formatDate(valor, 'America/Sao_Paulo', 'yyyy-MM-dd');
   return String(valor);
 }
 
-// "Convertida" = a PROPOSTA (N° Proposta, não o cliente) presente no Raw E
-// na base de Pagos (Efetivados + EfetivadosAPI) : cruzar por ID Cliente
-// marcava a proposta atual do cliente como convertida sempre que ele tinha
-// QUALQUER pagamento no histórico, mesmo de uma proposta antiga totalmente
-// diferente (ver mapaPropostasPagas_). Também não usa o campo Status Admin.
-// do próprio Raw sozinho (pode ficar defasado/errado; confiar só nele foi o
-// que causou um bug de "milhares de propostas convertidas num dia só": contava
-// TODO o estoque acumulado de linhas com Status Admin.=Pago no Raw, sem dedup,
-// e carimbava esse total inteiro como "hoje", toda vez que o sync rodava). Aqui, cada proposta confirmada na base de Pagos
-// conta uma vez, no dia da própria Solic. Proposta (não Alt. Status : além
-// de vir vazio em boa parte dos casos convertidos, empurrando tudo pro dia do
-// sync, não é essa a data certa pra essa contagem).
 function syncSnapshotDiario_() {
   const { rows } = getRawRows_();
   const clientesMaisRecentes = agruparMaisRecentePorCliente_(rows);
@@ -1026,14 +846,7 @@ function syncSnapshotDiario_() {
 
   const mapaPagos = mapaPropostasPagas_();
 
-  // Estoque de HOJE (tudo que não é conversão confirmada) : continua sendo
-  // "quantos estão em cada estágio agora", um ponto no tempo; só a linha de
-  // hoje é trocada, dias anteriores ficam intocados (mecanismo original).
   const agregadosHoje = {};
-  // PAGO é recalculado por inteiro a cada sync, nunca acumulado : o Raw só
-  // guarda uma janela rolante de dias, então isso naturalmente também
-  // corrige (substitui) qualquer linha PAGO distorcida de sincronizações
-  // anteriores, não só a de hoje.
   const pagoPorDiaSetor = {};
 
   clientesMaisRecentes.forEach(row => {
@@ -1042,9 +855,6 @@ function syncSnapshotDiario_() {
     const valor = isNaN(v) ? 0 : v;
 
     if (cleanText_(row['N° Proposta']) in mapaPagos) {
-      // Dia da conversão = dia da própria Solic. Proposta (pedido explícito
-      // : não Alt. Status: além de vir vazio em muitos casos convertidos,
-      // não é essa a data que deve contar aqui).
       const dia = Utilities.formatDate(row._dataHora, 'America/Sao_Paulo', 'yyyy-MM-dd');
       const key = dia + '|' + setor;
       if (!pagoPorDiaSetor[key]) pagoPorDiaSetor[key] = { qtd: 0, valor: 0 };
@@ -1082,22 +892,8 @@ function syncSnapshotDiario_() {
 
   sh.clearContents();
   sh.getRange(1, 1, linhasParaManter.length, headerRow.length).setValues(linhasParaManter);
-  // A chave de cache de getDashboardData agora é por período (dinâmica, não
-  // dá pra enumerar todas as combinações pra invalidar) : o TTL de 5 min já
-  // cuida de não deixar ficar velho por muito tempo.
 }
 
-/** ============================================================
- *  PROJEÇÃO DE RITMO DIÁRIO
- *  taxa histórica = média (Pago / Propostas do dia) dos últimos N dias
- *  projeção = propostas do período × taxa histórica
- *  ============================================================ */
-// dataInicio/dataFim (yyyy-mm-dd, opcionais): mesmo filtro de período do
-// topo do dashboard : "Pago"/"Projeção" somam os dias do período escolhido
-// em vez de ficarem travados em "hoje" (só cai pra hoje quando não há
-// período selecionado). A taxa histórica (baseline) continua olhando pra
-// trás a partir de HOJE sempre : é o ritmo médio recente da equipe,
-// independente de qual período o usuário está olhando agora.
 function diasNoIntervalo_(dataInicio, dataFim) {
   const dias = [];
   const d = new Date(dataInicio + 'T00:00:00');
@@ -1109,19 +905,6 @@ function diasNoIntervalo_(dataInicio, dataFim) {
   return dias;
 }
 
-// N° Proposta -> Val. Solic. da PRÓPRIA base de Pagos (Efetivados +
-// EfetivadosAPI) : nunca o Val. Solic. do Raw (o valor de verdade, o que foi
-// liberado, mora na base de Pagos).
-//
-// Chave por PROPOSTA, não por CLIENTE : um mesmo cliente pode ter várias
-// propostas ao longo do tempo, e só algumas delas podem ter pago. Cruzar por
-// ID Cliente (como era antes) marcava a proposta ATUAL do cliente como
-// convertida sempre que ELE tinha QUALQUER pagamento no histórico, mesmo que
-// fosse de uma proposta antiga e completamente diferente : na base real,
-// milhares de clientes com a proposta mais recente Cancelada/Não assinada/etc.
-// estavam sendo contados como "convertidos" só por causa de um pagamento
-// anterior não relacionado. Por proposta, só a proposta que realmente está
-// na base de Pagos conta como convertida.
 function mapaPropostasPagas_(dataInicio, dataFim) {
   const { rows: efetivados } = getGerEfetivadosRows_(dataInicio, dataFim);
   const { rows: efetivadosApi } = getGerEfetivadosApiRows_(dataInicio, dataFim);
@@ -1153,13 +936,6 @@ function agruparSerieConversao_(clientes, mapaPagos) {
   return porSetor;
 }
 
-// Série de conversão por dia, calculada direto de Raw × Pagos : sem depender
-// do acúmulo diário do Snapshot_Diario (que dependia de um gatilho rodar todo
-// dia e já carimbou estoque inteiro como "convertido hoje" mais de uma vez).
-// Por dia da Solic. Proposta (cliente mais recente, mesma regra do Funil):
-//   total = clientes que pediram proposta naquele dia
-//   pago  = desses, quantos estão na base de Pagos (Efetivados + EfetivadosAPI)
-// Cada dia é só daquele dia : nunca acumula de um dia pro outro.
 function computeSerieConversao_(rowsFornecidas) {
   const cache = CacheService.getScriptCache();
   const key = 'serie_conversao_v4';
@@ -1192,9 +968,6 @@ function taxaMediaConversao_(buckets) {
   return n ? soma / n : 0;
 }
 
-// porDia = computeSerieConversao_()[setor]. Pago/Projeção somam os dias do
-// período escolhido (hoje, se não houver período). Projeção = propostas do
-// período × taxa média de conversão dos N dias anteriores ao período.
 function computeProjecao_(porDia, cfg, dataInicio, dataFim) {
   const hoje = Utilities.formatDate(new Date(), 'America/Sao_Paulo', 'yyyy-MM-dd');
   const inicio = dataInicio || hoje;
@@ -1221,10 +994,6 @@ function computeProjecao_(porDia, cfg, dataInicio, dataFim) {
   };
 }
 
-// sync/sync_to_sheets.py grava "dd/mm/aaaa HH:MM:SS" (texto, não ISO) : o
-// new Date(...) do cliente não parseia isso de forma confiável (herda a
-// ambiguidade dd/mm vs mm/dd do navegador). Sempre devolve ISO daqui, já
-// resolvido no servidor, pra o cliente nunca precisar adivinhar o formato.
 function getUltimaSincronizacao_() {
   const bruto = getConfigMapa_()['Ultima_Sincronizacao'];
   if (!bruto) return null;
@@ -1239,12 +1008,6 @@ function getUltimaSincronizacao_() {
   return texto;
 }
 
-// Igual computeFunil_: devolve os 3 setores numa passada só, pra trocar de
-// setor no cliente não precisar chamar o servidor de novo. Cada ponto é SÓ
-// daquele dia: pago = convertidos cuja Solic. Proposta foi naquele dia;
-// projecao = propostas do dia × taxa média dos N dias anteriores (mesma
-// escala do pago : antes a linha tracejada plotava o estoque bruto parado,
-// centenas de milhares, e achatava a linha de Pago visualmente em zero).
 function montarSerieTemporal_(porSetor, cfg) {
   const resultado = {};
   Object.keys(porSetor).forEach(setor => {
@@ -1264,11 +1027,6 @@ function getSerieTemporal(tokenSessao) {
   return montarSerieTemporal_(computeSerieConversao_(), getConfig_());
 }
 
-/** ============================================================
- *  NÃO ASSINADOS : mesma lista de clientes-mais-recentes do Funil (ver
- *  agruparMaisRecentePorCliente_), só filtrada aos 8 estágios abaixo, nesta
- *  ordem de prioridade/exibição.
- *  ============================================================ */
 const STATUS_NAO_ASSINADOS_ORDEM = [
   'NÃO REDIGITOU', 'PAROU NA BIO', 'ASSINADO', 'CONF DE FRAUDE', 'CONFERÊNCIA',
   'PROCESSANDO PAGAMENTO AUTOMÁTICO', 'PENDENTE REGULARIZAÇÃO'
@@ -1309,10 +1067,6 @@ function computeNaoAssinados_(clientesMaisRecentes, supervisores, callLogMap, ta
   return { pivotCount, detalhe };
 }
 
-/** ============================================================
- *  CANCELADOS (porta de process_cancelados() + get_apuracao_cancelados()
- *  + get_distribuicao_cancelados_por_app())
- *  ============================================================ */
 function normalizarMotivo_(motivo) {
   const clean = cleanText_(motivo);
   return clean === MOTIVO_TN_ORIGINAL ? MOTIVO_TN_CURTO : clean;
@@ -1330,11 +1084,6 @@ function computeCancelados_(rows, supervisores, callLogMap, tabulacoesMap) {
     const motivo = temMotivo ? normalizarMotivo_(motivoBruto) : '';
     const valor = convertMonetaryToFloat_(row['Val. Solic.']);
 
-    // O pivô por motivo só conta motivos nomeados (mesmo filtro de
-    // process_cancelados() no Python). O detalhe, porém, nunca descarta a
-    // proposta : cai em "CANCELADO" genérico quando não há motivo, igual
-    // get_apuracao_cancelados() faz na produção; senão o caso some do
-    // acompanhamento do supervisor.
     if (temMotivo) {
       if (!pivot[motivo]) pivot[motivo] = { qtd: 0, valor: 0 };
       pivot[motivo].qtd += 1;
@@ -1346,9 +1095,6 @@ function computeCancelados_(rows, supervisores, callLogMap, tabulacoesMap) {
     const retorno = calcularRetornoCliente_(row['Celular'], dataHoraProposta, callLogMap);
     const tab = tabulacoes[cleanText_(row['N° Proposta'])] || {};
     detalhe.push({
-      // Sem fallback pra "CANCELADO" aqui : a exportação precisa da célula
-      // em branco quando não há motivo. Quem exibe na tela (Index.html)
-      // decide se quer mostrar um rótulo genérico, é só formatação visual.
       dataProposta: dataHoraProposta ? Utilities.formatDate(dataHoraProposta, 'America/Sao_Paulo', 'dd/MM/yyyy') : '',
       motivo: motivo, proposta: row['N° Proposta'], cliente: row['Cliente'], celular: row['Celular'],
       analista, correspondente: row['Correspondente'], valor: isNaN(valor) ? null : valor,
@@ -1381,17 +1127,7 @@ function computeCancelados_(rows, supervisores, callLogMap, tabulacoesMap) {
   return { pivot, detalhe, distribuicaoPorApi };
 }
 
-// O card "Conversão da Equipe" foi removido do dashboard (era matematicamente
-// idêntico ao card "Convertido (Pagos)" : mesma regra de cruzamento Raw ×
-// base de Pagos, só que somada em vez de por dia : dois cards mostrando a
-// mesma coisa com rótulos diferentes). computeConversaoEquipe_/Cache_ foram
-// removidas junto; a regra de cruzamento que elas usavam continua viva em
-// mapaPropostasPagas_/computeSerieConversao_, usada por "Convertido (Pagos)"
-// e pelo gráfico.
 
-/** ============================================================
- *  WEB APP
- *  ============================================================ */
 function doGet() {
   return HtmlService.createTemplateFromFile('Index')
     .evaluate()
@@ -1400,42 +1136,17 @@ function doGet() {
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
-/* dataInicio/dataFim (yyyy-mm-dd, opcionais): filtro de período global do
-   topo do dashboard : vale pro funil/KPIs/Não assinados/Cancelados/Pago e
-   Projeção (que somam os dias do período escolhido, caindo pra "hoje" só
-   quando não há período selecionado). O gráfico de série temporal
-   (getSerieTemporal) continua mostrando o histórico completo disponível,
-   não esse recorte. Não afeta a tela Exportar (que já tem filtro próprio).
-
-   NÃO recebe mais setor : funil/projeção vêm com os 3 setores de uma vez
-   (Todos/Callcenter/API) no mesmo payload, e o cliente troca de setor só
-   trocando qual fatia mostra, sem chamar o servidor de novo. Era isso que
-   deixava a troca de setor lenta: cada clique disparava esta função do
-   zero, relendo todas as planilhas de novo só pra filtrar diferente. */
 function getDashboardData(tokenSessao, dataInicio, dataFim, forcar) {
   const sessao = exigirSessaoValida_(tokenSessao);
   if (!sessao) throw new Error('Sessão inválida ou expirada. Faça login novamente.');
 
   const cache = CacheService.getScriptCache();
-  // v4: prefixo de versão do formato/lógica do payload : muda sempre que o
-  // formato do retorno OU a lógica de filtragem mudar, pra nunca servir um
-  // JSON velho cacheado de antes do ajuste (v4: cache passou a ser guardado
-  // em pedaços : uma chave "v3" antiga nunca teria o sufixo "_n" e cairia
-  // direto no cache miss de qualquer forma, mas o bump deixa isso explícito).
   const cacheKey = 'dashboard_data_v12_' + (dataInicio || 'x') + '_' + (dataFim || 'x');
-  // "forcar" (botão "Atualizar agora" no topo) pula a leitura do cache —
-  // o Raw em si já é sempre lido ao vivo da planilha (lerAbaProfostas_ não
-  // usa CacheService), então só pular esse cache de 10min já basta pra
-  // trazer o dado mais recente já sincronizado, de qualquer máquina.
   if (!forcar) {
     const cached = cacheGetJson_(cache, cacheKey);
     if (cached) return cached;
   }
 
-  // Cada planilha é lida UMA vez só aqui, e o resultado é reaproveitado por
-  // todos os compute*_ abaixo. clientesMaisRecentes é a MESMA lista
-  // deduplicada (1 linha por cliente, tentativa mais recente) usada pelo
-  // Funil e pelo painel Não Assinados : é isso que garante os dois baterem.
   const { rows } = getRawRows_(dataInicio, dataFim);
   const clientesMaisRecentes = agruparMaisRecentePorCliente_(rows);
   const supervisores = getSupervisoresMap_();
@@ -1457,20 +1168,10 @@ function getDashboardData(tokenSessao, dataInicio, dataFim, forcar) {
     naoAssinados: computeNaoAssinados_(clientesMaisRecentes, supervisores, callLogMap, tabulacoesMap),
     cancelados: computeCancelados_(rows, supervisores, callLogMap, tabulacoesMap)
   };
-  // Base cresceu (milhares de linhas) : o payload passa fácil do limite de
-  // 100KB por chave do CacheService; cachePutJson_ guarda em pedaços pra
-  // não perder o cache por causa disso (era o principal motivo do site
-  // pesado: sem isso, todo poll de 60s recomputava tudo do zero). TTL subiu
-  // de 5 pra 10 minutos : a fonte só sincroniza de hora em hora,
-  // então 5 min era mais conservador que o necessário e só gerava cache miss
-  // (recomputo caro) com mais frequência do que a base de fato muda.
   cachePutJson_(cache, cacheKey, payload, 600);
   return payload;
 }
 
-/* Primeira resposta pós-login: lê somente a semana corrente e entrega a
-   recepção visual de ontem e hoje. Histórico e baseline completos entram em
-   uma chamada complementar depois que o loader já saiu. */
 function deslocarDataIso_(dataIso, dias) {
   const p = String(dataIso).split('-').map(Number);
   const d = new Date(p[0], p[1] - 1, p[2], 12, 0, 0, 0);
@@ -1511,10 +1212,6 @@ function getDashboardDataInicial(tokenSessao, dataInicio, dataFim) {
     return d && d >= limiteInicial && d <= limiteFinal;
   });
 
-  // Em fins de semana ou antes da primeira sincronização do dia, ontem e
-  // hoje podem estar vazios apesar de a semana já possuir movimento. Nesse
-  // caso mostra o último dia realmente disponível e informa o período real,
-  // em vez de apresentar zeros como se fossem resultado operacional.
   if (!rows.length && rowsSemana.length) {
     let ultimoDiaDisponivel = '';
     rowsSemana.forEach(row => {
@@ -1571,8 +1268,6 @@ function getDashboardDataInicial(tokenSessao, dataInicio, dataFim) {
   return payload;
 }
 
-/* Complemento leve da primeira resposta. Reaproveita a série histórica
-   cacheada e devolve apenas o que precisa substituir a leitura provisória. */
 function getDashboardComplemento(tokenSessao, dataInicio, dataFim) {
   const sessao = exigirSessaoValida_(tokenSessao);
   if (!sessao) throw new Error('Sessão inválida ou expirada. Faça login novamente.');
@@ -1604,17 +1299,6 @@ function getDashboardComplemento(tokenSessao, dataInicio, dataFim) {
   return payload;
 }
 
-/** ============================================================
- *  VISÃO GERENCIAL : mesmas 6 métricas por canal (Channel A, Channel B, App,
- *  Landing Page, Call Center), só pra Admin. Call Center vem de
- *  TotalPropostas/Efetivados. Os 4 canais API vêm de Total de Propostas = Raw
- *  (único lugar onde as linhas com Analista "API CONSIGNADO ..." sobrevivem)
- *  e Efetivados = EfetivadosAPI (fonte própria, atualizada por outro
- *  mecanismo) : ambos filtrados pela mesma palavra-chave do rótulo do canal.
- *  ============================================================ */
-// [rótulo exibido no dashboard, palavra-chave buscada em "Analista"] : mesmas
-// 4 palavras-chave de APP_GROUPS, restritas aos canais da visão gerencial
-// (LEADER/PARTNER DESK de APP_GROUPS não entram aqui).
 const CANAIS_API_KEYWORDS = [
   ['Channel A', 'CHANNEL A'],
   ['Channel B', 'CHANNEL B'],
@@ -1629,9 +1313,6 @@ function somaValSolic_(lista) {
   }, 0);
 }
 
-// Total = aba TotalPropostas inteira (Pago incluso). Efetivados = aba
-// Efetivados inteira (só tem Pago) : contadas separadamente, cada uma da sua base, sem excluir
-// nada de nenhum lado.
 function computeGerencialCallcenter_(rowsTotal, rowsEfetivados) {
   const cc = rowsTotal.filter(r => classificarSetor_(r['Analista']) === 'Callcenter');
   const ccPagos = rowsEfetivados.filter(r => classificarSetor_(r['Analista']) === 'Callcenter');
@@ -1651,8 +1332,6 @@ function computeGerencialCallcenter_(rowsTotal, rowsEfetivados) {
   };
 }
 
-// Total = Raw inteiro (a única aba que guarda as linhas "API CONSIGNADO ...").
-// Efetivados = EfetivadosAPI (só Pago) : mesma keyword filtrando as duas bases.
 function computeGerencialCanalApi_(nome, keyword, rowsRaw, rowsEfetivadosApi) {
   const bate = (r) => classificarSetor_(r['Analista']) === 'API' && cleanText_(r['Analista']).toUpperCase().indexOf(keyword) !== -1;
   const total = rowsRaw.filter(bate);
@@ -1673,7 +1352,6 @@ function computeGerencialCanalApi_(nome, keyword, rowsRaw, rowsEfetivadosApi) {
   };
 }
 
-// Ordem fixa: Channel A, Channel B, App, Landing Page, Call Center.
 function getGerencialData(tokenSessao, dataInicio, dataFim) {
   const sessao = exigirAdmin_(tokenSessao);
   if (!sessao) throw new Error('Acesso restrito a administradores.');
@@ -1692,9 +1370,6 @@ function getGerencialData(tokenSessao, dataInicio, dataFim) {
   };
 }
 
-// Filtro por canal, reaproveitado pelos 3 tipos de bucket (hora/dia/mês) :
-// mesmo critério de computeGerencialCallcenter_/computeGerencialCanalApi_,
-// só que como predicado em vez de já filtrar a lista.
 function filtroCanalGerencial_(nome) {
   if (nome === 'Call Center') return r => classificarSetor_(r['Analista']) === 'Callcenter';
   const par = CANAIS_API_KEYWORDS.find(([n]) => n === nome);
@@ -1702,8 +1377,6 @@ function filtroCanalGerencial_(nome) {
   return r => classificarSetor_(r['Analista']) === 'API' && cleanText_(r['Analista']).toUpperCase().indexOf(keyword) !== -1;
 }
 
-// Cada canal lê da sua própria base (Call Center: TotalPropostas/Efetivados;
-// API: Raw/EfetivadosAPI) : mesma separação de fonte usada em getGerencialData.
 function fontesPorCanalGerencial_(dataInicio, dataFim) {
   const { rows: rowsTotalCc } = getGerTotalRows_(dataInicio, dataFim);
   const { rows: rowsEfetivadosCc } = getGerEfetivadosRows_(dataInicio, dataFim);
@@ -1717,10 +1390,6 @@ function fontesPorCanalGerencial_(dataInicio, dataFim) {
 
 const NOMES_CANAIS_GERENCIAL = [...CANAIS_API_KEYWORDS.map(([nome]) => nome), 'Call Center'];
 
-// Bucket isolado por hora (não acumulado): cada proposta conta só na hora
-// exata da sua "Hora Solic. Proposta". As 24 horas do dia vêm numa chamada
-// só, pra o passer 7h/8h/9h... trocar no cliente sem round-trip novo :
-// mesma lição do troca-de-setor lento (ver computeFunil_/getSerieTemporal).
 function computeCanalPorHora_(nome, filtro, rowsTotalDia, rowsEfetivadosDia) {
   const vazio = () => ({ totalPropostas: 0, valorTotalPropostas: 0, comSeguro: 0, semSeguro: 0, qtdeEfetivados: 0, valorLiberado: 0 });
   const horas = {};
@@ -1770,10 +1439,6 @@ function getGerencialDataPorHora(tokenSessao, dataIso) {
   };
 }
 
-// Série dia a dia / mês a mês pro gráfico de ritmo de produção : mesma ideia
-// da versão por hora: bucketiza tudo numa passada só (chaveFn decide o
-// agrupamento), devolve em ordem cronológica. chaveFn(row) => 'yyyy-mm-dd'
-// (dia) ou 'yyyy-mm' (mês); rotuloFn(chave) => texto de exibição do eixo.
 function computeCanalSerie_(nome, filtro, rowsTotal, rowsEfetivados, chaveFn, rotuloFn) {
   const buckets = {};
   const pegar = (chave) => {
@@ -1846,10 +1511,6 @@ function getGerencialSerieMensal(tokenSessao, dataInicio, dataFim) {
   };
 }
 
-// Prepara a visão gerencial inteira em uma única chamada após o login do Admin.
-// As quatro bases são lidas uma vez; os recortes, comparativos e séries usam
-// essas mesmas linhas em memória. Os endpoints acima continuam disponíveis
-// para períodos personalizados escolhidos depois pelo usuário.
 function getGerencialBootstrap(tokenSessao, periodos) {
   const sessao = exigirAdmin_(tokenSessao);
   if (!sessao) throw new Error('Acesso restrito a administradores.');
@@ -1958,10 +1619,6 @@ function getGerencialBootstrap(tokenSessao, periodos) {
   return resultado;
 }
 
-/** ============================================================
- *  EXPORTAÇÃO : tela "Exportar" com filtros (status, data, cliente,
- *  correspondente, setor; e sub-motivo quando o status é Cancelado)
- *  ============================================================ */
 const CABECALHO_EXPORT = ['Data', 'Proposta', 'Cliente', 'Celular', 'Analista', 'Setor', 'Correspondente', 'Status', 'Motivo Cancelamento', 'Valor', 'Supervisor'];
 const COR_CABECALHO_XLSX = '#1B2A4A';
 const COR_FONTE_CABECALHO_XLSX = '#FFFFFF';
@@ -1980,9 +1637,6 @@ function chaveCacheExportacao_(filtros) {
   return 'export_v1_' + bytes.slice(0, 16).map(b => ('0' + (b & 255).toString(16)).slice(-2)).join('');
 }
 
-/* Popula somente os autocompletes que dependem da base. Status e motivos de
-   cancelamento usam catálogos fixos no cliente, para não revelar presença ou
-   ausência de dados por meio das opções exibidas. */
 function montarOpcoesFiltroDeRows_(rows) {
   const correspondentes = new Set();
   const clientes = new Set();
@@ -2010,9 +1664,6 @@ function obterOpcoesFiltro(tokenSessao) {
 }
 
 function linhasFiltradas_(filtros) {
-  // Quando há data, a própria leitura limita a transferência física antes
-  // dos demais filtros. Os consolidados de hoje e ontem deixam de percorrer
-  // a base histórica inteira só para descartar quase todas as linhas depois.
   const { rows } = getRawRows_(filtros.dataInicio || null, filtros.dataFim || null);
   const supervisores = getSupervisoresMap_();
   const setor = filtros.setor || 'Todos';
@@ -2020,10 +1671,6 @@ function linhasFiltradas_(filtros) {
   const motivosSel = Array.isArray(filtros.motivos) && filtros.motivos.length ? filtros.motivos : null;
   const cliente = String(filtros.cliente || '').trim().toLowerCase();
   const correspondente = String(filtros.correspondente || '').trim().toLowerCase();
-  // "Solic. Proposta" na Raw é ISO ("aaaa-mm-dd HH:MM:SS"), não BR : usar
-  // parseDataBr_() nela (só entende dd/mm/aaaa) fazia dataProposta dar
-  // sempre null, e qualquer filtro de data zerava a exportação inteira.
-  // Mesmo parser usado em getRawRows_/lerAbaProfostas_, que já funciona.
   const dataInicio = filtros.dataInicio ? new Date(filtros.dataInicio + 'T00:00:00') : null;
   const dataFim = filtros.dataFim ? new Date(filtros.dataFim + 'T23:59:59') : null;
 
@@ -2035,9 +1682,6 @@ function linhasFiltradas_(filtros) {
     const estagio = classificarEstagioAtual_(row['Status Admin.']);
     if (estagiosSel && estagiosSel.indexOf(estagio) === -1) return;
 
-    // motivoFiltro inclui o fallback "CANCELADO" para bater com o catálogo
-    // fixo da interface. A célula exportada usa motivoExport, sempre em branco
-    // quando não há motivo real.
     let motivoFiltro = '', motivoExport = '';
     if (estagio === ESTAGIO_CANCELADO) {
       const bruto = cleanText_(row['Motivo_Cancelamento']);
@@ -2075,23 +1719,13 @@ function paraCsv_(headers, linhas) {
   return linhasCsv.join('\n');
 }
 
-/* Não cria arquivo público no Drive (nome/celular/valor de cliente nunca
-   ficam num link compartilhável) : o conteúdo volta como base64 direto na
-   resposta do google.script.run, e o navegador do usuário já logado dispara
-   o download. No XLSX, o cabeçalho sai formatado (fundo azul escuro, fonte
-   branca) : pedido explícito, feito antes de exportar os bytes. */
-/* Gerador comum de CSV/XLSX (cabeçalho azul escuro/fonte branca no XLSX) :
-   usado tanto pela tela Exportar quanto pelos botões de baixar dos blocos
-   Não assinados/Cancelados, pra manter o mesmo arquivo/formatação nos dois. */
 function gerarArquivoExport_(headers, linhas, formato, nomeBase) {
   if (formato === 'csv') {
     const csv = paraCsv_(headers, linhas);
-    const blob = Utilities.newBlob('﻿' + csv, 'text/csv', nomeBase + '.csv'); // BOM p/ acentos abrirem certo no Excel
+    const blob = Utilities.newBlob('﻿' + csv, 'text/csv', nomeBase + '.csv');
     return { base64: Utilities.base64Encode(blob.getBytes()), mime: 'text/csv', nome: nomeBase + '.csv' };
   }
 
-  // Truque do export=xlsx precisa de uma planilha "de verdade" : cria,
-  // exporta os bytes, e apaga em seguida. Nunca fica pública nesse meio-tempo.
   const ssTemp = SpreadsheetApp.create(nomeBase);
   let bytes;
   try {
@@ -2100,19 +1734,14 @@ function gerarArquivoExport_(headers, linhas, formato, nomeBase) {
     headerRange.setValues([headers]);
     headerRange.setBackground(COR_CABECALHO_XLSX).setFontColor(COR_FONTE_CABECALHO_XLSX).setFontWeight('bold');
     if (linhas.length > 0) {
-      // Coluna "Data" (sempre a 1ª agora) precisa virar texto puro ANTES do
-      // setValues : senão o Sheets reconhece "28/09/2026" como data de
-      // verdade e reformata sozinho.
       if (headers[0] === 'Data') sh.getRange(2, 1, linhas.length, 1).setNumberFormat('@');
       sh.getRange(2, 1, linhas.length, headers.length).setValues(linhas);
     }
     SpreadsheetApp.flush();
-    // getUrl() devolve .../d/<id>/edit : troca o final pelo endpoint de exportação.
     const url = ssTemp.getUrl().replace(/\/edit.*$/, '') + '/export?format=xlsx';
     const resp = UrlFetchApp.fetch(url, { headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() } });
     bytes = resp.getBlob().getBytes();
   } finally {
-    // Também remove o temporário se a exportação falhar no meio do caminho.
     try { DriveApp.getFileById(ssTemp.getId()).setTrashed(true); } catch (e) {}
   }
 
@@ -2123,10 +1752,6 @@ function gerarArquivoExport_(headers, linhas, formato, nomeBase) {
   };
 }
 
-// "AssinaAI - <o que foi extraído> - dd-mm-aaaa" : mesma convenção usada
-// nos botões de baixar direto dos blocos. Aqui o filtro pode ser qualquer
-// combinação de status, então só nomeia como "Casos Parados"/"Cancelados"
-// quando o recorte bate 1:1 com um desses blocos; senão fica genérico.
 function rotuloExportacao_(estagiosSel) {
   if (estagiosSel && estagiosSel.length) {
     if (estagiosSel.length === 1 && estagiosSel[0] === ESTAGIO_CANCELADO) return 'Cancelados';
@@ -2175,17 +1800,10 @@ function prepararExportacoesRapidas(tokenSessao) {
   return { ok: true, datas: [hoje.data, ontem.data], preparadoEm: new Date().toISOString() };
 }
 
-/* Baixar direto de um dos blocos (Não assinados / Cancelados) : exporta
-   exatamente o que está computado ali (mesma lógica, mesmas 3 colunas de
-   retorno ao cliente), não passa pelos filtros da tela Exportar. */
 function exportarBloco(tokenSessao, bloco, formato, dataInicio, dataFim) {
   const sessao = exigirSessaoValida_(tokenSessao);
   if (!sessao) throw new Error('Sessão inválida ou expirada. Faça login novamente.');
 
-  // Precisa respeitar o mesmo período selecionado no topo da página :
-  // antes baixava a base inteira sem filtro nenhum, ignorando o range de
-  // data escolhido (a tabela na tela já filtrava certo, só o botão de
-  // baixar dela é que ignorava).
   const { rows } = getRawRows_(dataInicio, dataFim);
   const supervisores = getSupervisoresMap_();
   const callLogMap = getCallLogPorTelefone_();
@@ -2198,10 +1816,6 @@ function exportarBloco(tokenSessao, bloco, formato, dataInicio, dataFim) {
     linhas = computeCancelados_(rows, supervisores, callLogMap, tabulacoesMap).detalhe.map(d => [d.dataProposta, d.motivo, d.proposta, d.cliente, d.celular, d.analista, d.correspondente, d.valor, d.supervisor, d.retornouCliente ? 'Sim' : 'Não', d.tentativasRetorno, d.tentativasBemSucedidas, d.tabulacaoTentativa1, d.tabulacaoTentativa2]);
   } else {
     rotulo = 'Casos Parados';
-    // computeNaoAssinados_ espera a lista já deduplicada por cliente (1
-    // linha por cliente, tentativa mais recente) : mandar rows crua aqui
-    // ia iterar toda proposta repetida de novo, igual o bug que corrigimos
-    // no Funil.
     const clientesMaisRecentes = agruparMaisRecentePorCliente_(rows);
     headers = ['Data', 'Validação', 'Proposta', 'Cliente', 'Celular', 'Analista', 'Correspondente', 'Valor', 'Supervisor', 'Retornou ao Cliente', 'Tentativas de Retorno', 'Tentativas Bem Sucedidas', 'Retorno Tentativa 1º', 'Retorno Tentativa 2º'];
     linhas = computeNaoAssinados_(clientesMaisRecentes, supervisores, callLogMap, tabulacoesMap).detalhe.map(d => [d.dataProposta, d.validacao, d.proposta, d.cliente, d.celular, d.analista, d.correspondente, d.valor, d.supervisor, d.retornouCliente ? 'Sim' : 'Não', d.tentativasRetorno, d.tentativasBemSucedidas, d.tabulacaoTentativa1, d.tabulacaoTentativa2]);
@@ -2211,15 +1825,9 @@ function exportarBloco(tokenSessao, bloco, formato, dataInicio, dataFim) {
   return gerarArquivoExport_(headers, linhas, formato === 'csv' ? 'csv' : 'xlsx', nomeBase);
 }
 
-/** ============================================================
- *  SETUP : rodar uma vez pelo editor do Apps Script
- *  ============================================================ */
 function inicializarPlanilha() {
   const ss = planilha_();
   const definicoes = {
-    // Raw fica sem cabeçalho de propósito: quem escreve as 43 colunas é o
-    // sync/sync_to_sheets.py (escrita por cima). Só a aba precisa existir aqui,
-    // senão getRawRows_() recebe null e todo o getDashboardData estoura.
     [SHEET_RAW]: [],
     [SHEET_CONFIG]: ['Chave', 'Valor'],
     [SHEET_SNAPSHOT]: ['Data', 'Setor', 'Estagio', 'Qtd', 'Valor'],
@@ -2228,7 +1836,6 @@ function inicializarPlanilha() {
     [SHEET_USUARIOS]: ['Login', 'SenhaHash', 'Salt', 'Papel', 'Ativo', 'CriadoEm'],
     [SHEET_TENTATIVAS]: ['Chave', 'Tentativas', 'UltimaTentativa', 'BloqueadoAte'],
     [SHEET_LOG_ACESSOS]: ['DataHora', 'Login', 'Papel', 'Sucesso', 'Detalhe'],
-    // Sem cabeçalho de propósito, mesmo motivo da Raw : sync/sync_to_sheets.py escreve.
     [SHEET_CALL_LOG]: []
   };
   Object.keys(definicoes).forEach(nome => {
@@ -2251,15 +1858,8 @@ function inicializarPlanilha() {
   definirUsuariosPadrao();
 }
 
-/* 3 papéis, mesmo esquema do Portal da Qualidade (Admin/Auditor/Operador
-   lá, Admin/Supervisor/Operador aqui). Idempotente: se o login já existe
-   atualiza senha+papel no lugar, senão cria : nunca deleta linha (evita
-   desalinhar índice entre logins na mesma passada). */
 function definirUsuariosPadrao() {
   const aba = planilha_().getSheetByName(SHEET_USUARIOS);
-  // Nenhuma senha mora no código. Cada conta lê a senha inicial de uma Script
-  // Property chamada ASSINA_AI_SEED_<LOGIN EM MAIÚSCULAS> (Project Settings >
-  // Script Properties). Sem a propriedade, a conta é pulada e o log avisa.
   const seeds = [
     { login: 'admin.demo', papel: 'Admin' },
     { login: 'Master', papel: 'Admin' },

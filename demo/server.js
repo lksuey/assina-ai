@@ -1,11 +1,4 @@
 'use strict';
-/**
- * Local demo server (Node, no dependencies). Serves apps-script/Index.html and
- * exposes the public functions of Code.gs over /rpc, emulating google.script.run.
- * Data is the synthetic demo_data.json. Binds to 127.0.0.1 only.
- *
- *   node demo/server.js [port]
- */
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -34,10 +27,8 @@ const SHIM = `<script>
 </script>`;
 
 function callPublic(fn, args) {
-  // Same visibility rule as Apps Script: a trailing underscore means private.
   if (!/^[A-Za-z][A-Za-z0-9]*$/.test(fn) || typeof rt.context[fn] !== 'function') throw new Error('Unknown function: ' + fn);
   let result = rt.context[fn](...args);
-  // The demo has no real XLSX export: the mock returns CSV content, so label it honestly.
   if (result && typeof result === 'object' && result.base64 && /\.xlsx$/.test(result.nome || '')) {
     result = Object.assign({}, result, { mime: 'text/csv', nome: result.nome.replace(/\.xlsx$/, '.csv') });
   }

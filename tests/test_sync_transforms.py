@@ -11,7 +11,7 @@ from pathlib import Path
 
 try:
     import pandas as pd
-except ImportError:  # pragma: no cover
+except ImportError:
     pd = None
 
 SPEC_PATH = Path(__file__).resolve().parents[1] / "sync" / "sync_to_sheets.py"
@@ -33,10 +33,10 @@ class RetentionRules(unittest.TestCase):
 
     def frame(self):
         return pd.DataFrame([
-            {"N° Proposta": "1", "Status Admin.": "Assinado", "Alt. Status": "", "Emissão": "", "Solic. Proposta": "2026-01-02 10:00:00"},   # active and very old
-            {"N° Proposta": "2", "Status Admin.": "Pago", "Alt. Status": "2026-10-25", "Emissão": "", "Solic. Proposta": "2026-10-20 10:00:00"},  # terminal, recent
-            {"N° Proposta": "3", "Status Admin.": "Cancelado", "Alt. Status": "2026-08-01", "Emissão": "", "Solic. Proposta": "2026-07-30 10:00:00"},  # terminal, old
-            {"N° Proposta": "4", "Status Admin.": "cancelado ", "Alt. Status": "", "Emissão": "", "Solic. Proposta": "2026-10-28 09:00:00"},  # fallback to Solic. date, case/space tolerant
+            {"N° Proposta": "1", "Status Admin.": "Assinado", "Alt. Status": "", "Emissão": "", "Solic. Proposta": "2026-01-02 10:00:00"},
+            {"N° Proposta": "2", "Status Admin.": "Pago", "Alt. Status": "2026-10-25", "Emissão": "", "Solic. Proposta": "2026-10-20 10:00:00"},
+            {"N° Proposta": "3", "Status Admin.": "Cancelado", "Alt. Status": "2026-08-01", "Emissão": "", "Solic. Proposta": "2026-07-30 10:00:00"},
+            {"N° Proposta": "4", "Status Admin.": "cancelado ", "Alt. Status": "", "Emissão": "", "Solic. Proposta": "2026-10-28 09:00:00"},
         ])
 
     def test_active_rows_are_never_cut_and_terminal_rows_follow_the_window(self):

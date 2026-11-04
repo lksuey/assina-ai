@@ -17,9 +17,9 @@ SEED = 20260101
 DAYS = 35
 N_CUSTOMERS = 520
 
-CORRESPONDENT_A = "CORRESPONDENT A - 0001"   # API desk (only "API ..." analysts are valid here)
-CORRESPONDENT_B = "CORRESPONDENT B - 0002"   # call center
-CORRESPONDENT_UNKNOWN = "CORRESPONDENT Z - 0099"  # not in the allowed list, must be ignored
+CORRESPONDENT_A = "CORRESPONDENT A - 0001"
+CORRESPONDENT_B = "CORRESPONDENT B - 0002"
+CORRESPONDENT_UNKNOWN = "CORRESPONDENT Z - 0099"
 
 API_ANALYSTS = [
     "API CONSIGNADO CHANNEL A", "API CONSIGNADO CHANNEL B", "API CONSIGNADO APP",
@@ -37,7 +37,7 @@ CANCEL_REASONS = [
     "Customer gave up", "Biometric validation failed", "Document mismatch", "Payroll margin exceeded",
     "REGISTRY RETURN FAILURE: CET RATE 1.00%",
     "REGISTRY RETURN FAILURE: TN - Monthly interest rate is invalid: it must be lower than or equal to the CET rate, with a spread of at most 1.00%",
-    "",  # cancelled without a recorded reason
+    "",
     "#N/D",
 ]
 
@@ -52,7 +52,6 @@ def money(rng):
 
 
 def phone(customer_index, variant):
-    # Area code 00 does not exist, so these can never be real numbers.
     base = "(00) 90000-%04d" % customer_index
     return base if variant == 0 else "00900000%04d" % customer_index
 
@@ -68,7 +67,7 @@ def build(anchor: date, seed: int = SEED):
     for day_offset in range(DAYS, -1, -1):
         day = anchor - timedelta(days=day_offset)
         if day.weekday() == 6:
-            continue  # no proposals on Sundays
+            continue
         volume = rng.randint(22, 48) if day.weekday() < 5 else rng.randint(6, 14)
         if day_offset == 0:
             volume = rng.randint(10, 20)
@@ -99,14 +98,12 @@ def build(anchor: date, seed: int = SEED):
                 (paid_api if is_api else paid).append(row)
             if not is_api:
                 total.append(row)
-            # Outbound calls after the proposal, for customers who did not sign.
             if status in ("Assinado o primeiro", "Não assinado", "Cancelado", "Assinado") and rng.random() < 0.55:
                 for _ in range(rng.randint(1, 3)):
                     call_at = moment + timedelta(minutes=rng.randint(5, 600))
                     calls.append([phone(customer["idx"], 0), call_at.strftime("%d/%m/%Y %H:%M:%S"),
                                   rng.choice([0, 1, 2, 4, 35, 120, 300])])
 
-    # Rows the dashboard must ignore: unknown correspondent, and a human analyst on the API correspondent.
     for k in range(6):
         proposal_no += 1
         c = customers[k]
@@ -116,7 +113,6 @@ def build(anchor: date, seed: int = SEED):
                     "X%05d" % c["idx"], "Customer %03d" % c["idx"], phone(c["idx"], 0), "1.000,00", "0,00",
                     "Analyst 01", "Assinado", bad_corr, ""])
 
-    # Stable chronological order (the real sheets are roughly chronological).
     raw.sort(key=lambda r: (r[0], r[3]))
     total.sort(key=lambda r: (r[0], r[3]))
     paid.sort(key=lambda r: (r[0], r[3]))

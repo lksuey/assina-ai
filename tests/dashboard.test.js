@@ -1,14 +1,11 @@
 'use strict';
-// Run with: node --test tests/      (Node 18+, no dependencies)
-// These tests execute the real apps-script/Code.gs inside an in-memory mock of the
-// Apps Script services (demo/gas_mock.js), with the synthetic demo data and a frozen clock.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { loadDashboard, demoPassword } = require('../demo/runtime');
 const { createRuntime } = require('../demo/gas_mock');
 const path = require('node:path');
 
-const NOW = '2026-10-30T15:00:00-03:00'; // a Friday, same anchor as demo/demo_data.json
+const NOW = '2026-10-30T15:00:00-03:00';
 const plain = (x) => JSON.parse(JSON.stringify(x));
 const DEVICE = 'device-token-0001';
 
@@ -19,7 +16,6 @@ function login(rt, user, device = DEVICE) {
   return res.token;
 }
 
-/* ------------------------------------------------------------------ utilities */
 test('convertMonetaryToFloat_ understands Brazilian and US formats', () => {
   const rt = fresh();
   const f = (v) => rt.context.convertMonetaryToFloat_(v);
@@ -36,9 +32,9 @@ test('telefonePadrao10_ makes DDI and ninth-digit variants comparable', () => {
   const f = (v) => rt.context.telefonePadrao10_(v);
   const base10 = '0000000001';
   assert.equal(f('(00) 0000-0001'), base10);
-  assert.equal(f('(00) 90000-0001'), base10);               // 11 digits: drops the extra 9
-  assert.equal(f('00' + '00' + '0000' + '0001'), base10);   // 12 digits: drops the 2 digit prefix
-  assert.equal(f('00' + '00' + '90000' + '0001'), base10);  // 13 digits: prefix and extra 9
+  assert.equal(f('(00) 90000-0001'), base10);
+  assert.equal(f('00' + '00' + '0000' + '0001'), base10);
+  assert.equal(f('00' + '00' + '90000' + '0001'), base10);
 });
 
 test('parseDataHoraProposta_ accepts ISO text, BR text, Date objects and day fractions', () => {
@@ -49,14 +45,13 @@ test('parseDataHoraProposta_ accepts ISO text, BR text, Date objects and day fra
     [2026, 9, 29, 14, 35, 10]);
   const br = p('29/10/2026', '09:05');
   assert.deepEqual([br.getDate(), br.getMonth(), br.getHours(), br.getMinutes()], [29, 9, 9, 5]);
-  assert.equal(p('29/10/2026', 0.5).getHours(), 12);        // 0.5 day = noon
+  assert.equal(p('29/10/2026', 0.5).getHours(), 12);
   assert.equal(p('not a date', '10:00'), null);
 });
 
 test('Brazilian business-day calendar for a month with national holidays', () => {
   const rt = fresh();
   assert.ok(rt.context.feriadosNacionaisMeta_(2026).has('2026-04-03'), 'Good Friday 2026');
-  // Nov/2026: 21 weekdays minus Nov 2 (Monday) and Nov 20 (Friday); Nov 15 is a Sunday.
   const dias = plain(rt.context.diasUteisMeta_('2026-11'));
   assert.equal(dias.total, 19);
   assert.throws(() => rt.context.diasUteisMeta_('2026-13'), /inválida/);
@@ -72,7 +67,6 @@ test('cache helpers split payloads above the 100KB limit and restore them', () =
   assert.equal(rt.context.cacheGetJson_(cache, 'missing'), null);
 });
 
-/* ------------------------------------------------------------------ auth */
 test('login: right password works, wrong one gets the same generic message', () => {
   const rt = fresh();
   assert.equal(rt.context.verificarLogin('admin.demo', demoPassword('admin.demo'), DEVICE).papel, 'Admin');
@@ -98,7 +92,6 @@ test('progressive lockout: 5 failures lock for 2 minutes, then the clock release
   for (let i = 0; i < 4; i++) assert.equal(rt.context.verificarLogin('operator.demo', 'wrong-pass', DEVICE).bloqueado, undefined);
   const fifth = plain(rt.context.verificarLogin('operator.demo', 'wrong-pass', DEVICE));
   assert.equal(fifth.bloqueado, true);
-  // Even the right password is refused while locked.
   assert.equal(rt.context.verificarLogin('operator.demo', demoPassword('operator.demo'), DEVICE).bloqueado, true);
   rt.setNow(new Date(Date.parse(NOW) + 3 * 60 * 1000));
   assert.equal(rt.context.verificarLogin('operator.demo', demoPassword('operator.demo'), DEVICE).ok, true);
@@ -155,7 +148,6 @@ test('Meta settings can only be saved by Master and are validated', () => {
   assert.throws(() => rt.context.salvarConfiguracaoMeta(master, bad), /inválido/);
 });
 
-/* ------------------------------------------------------------------ data reading */
 test('rows from unknown correspondents and human analysts on the API desk are ignored', () => {
   const rt = fresh();
   const { rows } = plain(rt.context.getRawRows_());
@@ -174,7 +166,6 @@ test('period filter returns only proposals inside the range', () => {
   rows.forEach((r) => assert.match(r['Solic. Proposta'], /^2026-10-(28|29)/));
 });
 
-/* ------------------------------------------------------------------ stalled cases checker */
 test('stalled cases: only the stalled stages, one row per customer (latest proposal)', () => {
   const rt = fresh();
   const { rows } = plain(rt.context.getRawRows_());
@@ -190,7 +181,6 @@ test('stalled cases: only the stalled stages, one row per customer (latest propo
   result.detalhe.forEach((d) => assert.ok(allowed.includes(d.validacao), d.validacao + ' is not a stalled stage'));
   assert.ok(!('PAGO' in result.pivotCount) && !('CANCELADO' in result.pivotCount));
 
-  // Independent oracle: recompute the expected count straight from the sheet rows.
   const labels = { 'não assinado': 'NÃO REDIGITOU', 'assinado o primeiro': 'PAROU NA BIO', 'assinado': 'ASSINADO',
     'conferência de fraude': 'CONF DE FRAUDE', 'conferência': 'CONFERÊNCIA',
     'processando pagamento automático': 'PROCESSANDO PAGAMENTO AUTOMÁTICO', 'pendente regularização': 'PENDENTE REGULARIZAÇÃO' };
@@ -227,9 +217,9 @@ test('return-to-customer counts only outbound calls made AFTER the proposal', ()
   const key = rt.context.telefonePadrao10_(phone);
   const callLog = {};
   callLog[key] = [
-    { dataHora: proposalAt - 3600 * 1000, segundos: 120 },   // before the proposal: ignored
-    { dataHora: proposalAt + 3600 * 1000, segundos: 1 },     // after, but a technical drop
-    { dataHora: proposalAt + 7200 * 1000, segundos: 90 },    // after, real contact
+    { dataHora: proposalAt - 3600 * 1000, segundos: 120 },
+    { dataHora: proposalAt + 3600 * 1000, segundos: 1 },
+    { dataHora: proposalAt + 7200 * 1000, segundos: 90 },
   ];
   const r = plain(rt.context.calcularRetornoCliente_(phone, new Date(proposalAt), callLog));
   assert.deepEqual(r, { retornouCliente: true, tentativasRetorno: 2, tentativasBemSucedidas: 1 });
@@ -247,7 +237,6 @@ test('conversion joins Raw and paid sheets by proposal number, not by customer',
   const raw = wb.getSheetByName('Raw');
   raw.getRange(1, 1, 3, H.length).setValues([
     H,
-    // customer C1: an old proposal that was paid, and a newer one that was cancelled
     ['2026-10-20 09:00:00', '09:00:00', '1001', 'C1', 'Analyst 01', 'Pago', A, '1.000,00'],
     ['2026-10-29 09:00:00', '09:00:00', '1002', 'C1', 'Analyst 01', 'Cancelado', A, '2.000,00'],
   ]);
@@ -263,7 +252,6 @@ test('conversion joins Raw and paid sheets by proposal number, not by customer',
   assert.equal(serie.Todos['2026-10-29'].pago, 0, 'the newest proposal is NOT converted just because the customer paid before');
 });
 
-/* ------------------------------------------------------------------ cancelled */
 test('cancelled: registry-return reasons are shortened, "#N/D" is kept out of the pivot but not out of the detail', () => {
   const rt = fresh();
   const token = login(rt, 'admin.demo');
@@ -277,7 +265,6 @@ test('cancelled: registry-return reasons are shortened, "#N/D" is kept out of th
   assert.ok(cancelledTotal > pivotTotal, 'detail also holds cancelled cases without a named reason');
 });
 
-/* ------------------------------------------------------------------ management view + export */
 test('management view lists the five channels and counts paid proposals per channel', () => {
   const rt = fresh();
   const admin = login(rt, 'admin.demo');

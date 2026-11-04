@@ -43,11 +43,6 @@ PAID_API_XLSX = os.environ.get("PAID_API_XLSX", "")
 SUPERVISORS_XLSX = os.environ.get("SUPERVISORS_XLSX", "")
 CALL_LOG_XLSX = os.environ.get("CALL_LOG_XLSX", "")
 
-# Only the columns the management cards use; the source exports have dozens of
-# columns and tens of thousands of rows. "N° Proposta" is the join key between
-# Raw and the paid tabs (NOT "ID Cliente": one customer can have many proposals
-# and only one of them may have been paid, so joining on the customer would mark
-# every proposal of that customer as converted).
 COLUNAS_GERENCIAL = ["Solic. Proposta", "Hora Solic. Proposta", "Val. Solic.", "Seguro",
                      "Analista", "Status Admin.", "Correspondente", "ID Cliente", "N° Proposta"]
 ABAS_GERENCIAL = [
@@ -56,22 +51,15 @@ ABAS_GERENCIAL = [
     ("PAID_API_XLSX", "EfetivadosAPI"),
 ]
 
-# Only outbound calls count as "customer contact attempts".
 DIRECAO_SAIDA = os.environ.get("DIRECAO_SAIDA", "Outbound")
-# Calls shorter than this (talk time, falling back to answer time) are treated as
-# technical drops or voicemail, not a real contact.
 DURACAO_MINIMA_SUCESSO_SEGUNDOS = 3
 
-# The local history only grows; the Raw tab must not mirror it forever. Only
-# proposals still in the active pipeline, or that became Paid/Cancelled within the
-# window, are synced. Active proposals are never cut by the window.
 RETENTION_DAYS_RAW = int(os.environ.get("RETENTION_DAYS_RAW", "45"))
 RETENTION_DAYS = int(os.environ.get("RETENTION_DAYS", "180"))
 STATUS_COL = "Status Admin."
 STATUS_TERMINAIS = {"pago", "cancelado"}
 COLUNAS_DATA_REFERENCIA = ["Alt. Status", "Emissão", "Solic. Proposta"]
 
-# API channel rows have their own fixed (not rolling) cutoff.
 DATA_CORTE_API = os.environ.get("DATA_CORTE_API", "2000-01-01")
 ANALISTA_COL = "Analista"
 
@@ -100,7 +88,7 @@ def _filtrar_retencao_api(df: pd.DataFrame, col_data: str = "Solic. Proposta") -
 
 
 def _client():
-    import gspread  # imported lazily so the pure functions above work without it
+    import gspread
     from google.oauth2.service_account import Credentials
 
     if not CREDENTIALS_PATH or not os.path.exists(CREDENTIALS_PATH):
@@ -141,7 +129,7 @@ def _write_dataframe(ws, df: pd.DataFrame, tentativas: int = 3, espera_s: int = 
             if linhas_antigas > len(linhas):
                 ws.batch_clear([f"A{len(linhas) + 1}:ZZ{linhas_antigas}"])
             return
-        except Exception as e:  # noqa: BLE001 - retry on any transient failure
+        except Exception as e:
             ultimo_erro = e
             print(f"  [retry {tentativa + 1}/{tentativas}] write failed: {e}")
             if tentativa < tentativas - 1:
@@ -211,15 +199,11 @@ def sync_gerencial(gc) -> None:
         limite_aba = corte_api if aba == "EfetivadosAPI" else limite
         df = df[datas >= limite_aba].fillna("")
 
-        # read_excel(usecols=...) returns columns in the FILE order, not the order of
-        # the usecols list. Always use df.columns as the header, never the manual
-        # list, or header and values drift apart.
         colunas_reais = df.columns.tolist()
         ws = _worksheet_ou_criar(gc, aba)
         ws.clear()
         ws.resize(rows=len(df) + 1, cols=len(colunas_reais))
         linhas = [colunas_reais] + df.astype(str).values.tolist()
-        # In chunks: tens of thousands of rows in one request exceed the API payload limit.
         for inicio in range(0, len(linhas), 10000):
             ws.update(linhas[inicio:inicio + 10000], range_name=f"A{inicio + 1}")
         print(f"{aba} synced: {len(df)} of {total} rows (last {RETENTION_DAYS} days).")
@@ -256,10 +240,6 @@ def _duracao_para_segundos(hhmmss) -> int:
         return 0
 
 
-# The source has changed its timestamp format more than once without notice. Each
-# known format is tried in order and, as a last resort, pandas infers it. Without
-# this chain a format change silently turned every row into NaT and the "returned
-# to customer" flag was always "No".
 FORMATOS_DATA_CONHECIDOS = ["%d/%m/%Y %H:%M", "%b %d, %Y %I:%M %p", "%Y-%m-%d %H:%M:%S"]
 
 
